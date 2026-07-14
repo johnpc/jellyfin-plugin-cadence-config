@@ -1,0 +1,20 @@
+---
+name: "CadenceConfig"
+guid: "7d49437c-2e97-430f-b6b7-fa9d58110448"
+version: "0.0.0.1"
+targetAbi: "10.11.0.0"
+framework: "net9.0"
+overview: "Serves the Cadence music client its runtime config and proxies Lidarr requests server-side."
+description: >
+  CadenceConfig lets a Jellyfin server operator configure the Cadence music client once, in the
+  plugin dashboard, so every client — web PWA and native iOS — is auto-configured at sign-in with
+  no per-device setup. It serves the client's non-secret runtime config (marlin/Meilisearch search
+  URL, sign-up URL, cast receiver id) and proxies the client's "request missing music" calls to
+  Lidarr through a curated allowlist, injecting the Lidarr API key server-side so the write
+  credential never reaches a browser or the app.
+category: "General"
+owner: "johnpc"
+artifacts:
+  - "Jellyfin.Plugin.CadenceConfig.dll"
+changelog: >
+  Initial release

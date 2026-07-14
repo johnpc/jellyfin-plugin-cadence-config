@@ -1,0 +1,10 @@
+bin/
+obj/
+coverage/
+*.user
+.vs/
+.idea/
+release/
+*.zip
+TestResults/
+.env

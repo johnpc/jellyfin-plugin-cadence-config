@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: 9.0.x
+
+    - name: Restore dependencies
+      run: dotnet restore jellyfin-plugin-cadence-config.sln
+
+    - name: Check formatting
+      run: dotnet format jellyfin-plugin-cadence-config.sln --verify-no-changes
+
+    - name: Build (strict — catches deprecated APIs, unused vars, naming violations)
+      run: dotnet build jellyfin-plugin-cadence-config.sln --configuration Release --no-restore /p:TreatWarningsAsErrors=true
+
+    - name: Run unit tests with coverage
+      run: |
+        dotnet test Jellyfin.Plugin.CadenceConfig.Tests/Jellyfin.Plugin.CadenceConfig.Tests.csproj \
+          --configuration Release \
+          --no-build \
+          /p:CollectCoverage=true \
+          /p:CoverletOutputFormat=json \
+          /p:CoverletOutput=../coverage/coverage.json \
+          /p:Include="[Jellyfin.Plugin.CadenceConfig]*" \
+          /p:ThresholdType=line \
+          /p:Threshold=80
+
+    - name: CRAP score check
+      run: bash scripts/check-crap.sh coverage/coverage.json
+
+    - name: Line count check
+      run: bash scripts/check-line-count.sh 250

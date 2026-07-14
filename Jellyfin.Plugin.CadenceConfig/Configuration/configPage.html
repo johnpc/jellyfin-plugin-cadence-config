@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CadenceConfig</title>
+</head>
+<body>
+    <div id="CadenceConfigPage" data-role="page" class="page type-interior pluginConfigurationPage">
+        <div data-role="content">
+            <div class="content-primary">
+                <p>
+                    These values are handed to every Cadence client (web and iOS) when a user signs in,
+                    so no one has to configure URLs by hand. The Lidarr API key stays on the server —
+                    clients call the plugin's proxy and never see the key.
+                </p>
+                <form class="CadenceConfigForm">
+                    <div class="inputContainer">
+                        <label for="MarlinUrl">Marlin search URL:</label>
+                        <input id="MarlinUrl" name="MarlinUrl" type="text" is="emby-input" />
+                        <div class="fieldDescription">Meilisearch/marlin base URL for faster search (e.g. https://marlin.example.com). Leave blank to use native Jellyfin search.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label for="SignupUrl">Sign-up URL:</label>
+                        <input id="SignupUrl" name="SignupUrl" type="text" is="emby-input" />
+                        <div class="fieldDescription">Optional. Shown as a "Sign up" link on the client's sign-in screen.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label for="CastReceiverAppId">Cast receiver app id:</label>
+                        <input id="CastReceiverAppId" name="CastReceiverAppId" type="text" is="emby-input" />
+                        <div class="fieldDescription">Optional. A custom Google Cast receiver app id; leave blank for the default receiver.</div>
+                    </div>
+                    <h3>Request missing music (Lidarr)</h3>
+                    <div class="inputContainer">
+                        <label for="LidarrUrl">Lidarr URL:</label>
+                        <input id="LidarrUrl" name="LidarrUrl" type="text" is="emby-input" />
+                        <div class="fieldDescription">Lidarr base URL (e.g. http://localhost:8686). Set with an API key to enable the Requests feature.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label for="LidarrApiKey">Lidarr API key:</label>
+                        <input id="LidarrApiKey" name="LidarrApiKey" type="text" is="emby-input" />
+                        <div class="fieldDescription">Kept on the server — the plugin injects it into request calls. Never sent to clients.</div>
+                    </div>
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <script type="text/javascript">
+            var CadenceConfig = {
+                pluginUniqueId: '7d49437c-2e97-430f-b6b7-fa9d58110448'
+            };
+
+            document.querySelector('.CadenceConfigForm')
+                .addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    Dashboard.showLoadingMsg();
+
+                    ApiClient.getPluginConfiguration(CadenceConfig.pluginUniqueId).then(function (config) {
+                        config.MarlinUrl = document.querySelector('#MarlinUrl').value;
+                        config.SignupUrl = document.querySelector('#SignupUrl').value;
+                        config.CastReceiverAppId = document.querySelector('#CastReceiverAppId').value;
+                        config.LidarrUrl = document.querySelector('#LidarrUrl').value;
+                        config.LidarrApiKey = document.querySelector('#LidarrApiKey').value;
+
+                        ApiClient.updatePluginConfiguration(CadenceConfig.pluginUniqueId, config).then(function (result) {
+                            Dashboard.processPluginConfigurationUpdateResult(result);
+                        });
+                    });
+
+                    return false;
+                });
+
+            document.querySelector('#CadenceConfigPage').addEventListener('pageshow', function () {
+                Dashboard.showLoadingMsg();
+
+                ApiClient.getPluginConfiguration(CadenceConfig.pluginUniqueId).then(function (config) {
+                    document.querySelector('#MarlinUrl').value = config.MarlinUrl || '';
+                    document.querySelector('#SignupUrl').value = config.SignupUrl || '';
+                    document.querySelector('#CastReceiverAppId').value = config.CastReceiverAppId || '';
+                    document.querySelector('#LidarrUrl').value = config.LidarrUrl || '';
+                    document.querySelector('#LidarrApiKey').value = config.LidarrApiKey || '';
+
+                    Dashboard.hideLoadingMsg();
+                });
+            });
+        </script>
+    </div>
+</body>
+</html>

@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jellyfin.Plugin.CadenceConfig", "Jellyfin.Plugin.CadenceConfig\Jellyfin.Plugin.CadenceConfig.csproj", "{A298DA59-ABC7-436E-A311-48BF1FFD2FF6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jellyfin.Plugin.CadenceConfig.Tests", "Jellyfin.Plugin.CadenceConfig.Tests\Jellyfin.Plugin.CadenceConfig.Tests.csproj", "{1124ADD2-70AD-4EE5-BF16-E0BEE767BD27}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A298DA59-ABC7-436E-A311-48BF1FFD2FF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A298DA59-ABC7-436E-A311-48BF1FFD2FF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A298DA59-ABC7-436E-A311-48BF1FFD2FF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A298DA59-ABC7-436E-A311-48BF1FFD2FF6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1124ADD2-70AD-4EE5-BF16-E0BEE767BD27}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1124ADD2-70AD-4EE5-BF16-E0BEE767BD27}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1124ADD2-70AD-4EE5-BF16-E0BEE767BD27}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1124ADD2-70AD-4EE5-BF16-E0BEE767BD27}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

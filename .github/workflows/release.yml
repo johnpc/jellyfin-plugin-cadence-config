@@ -1,0 +1,145 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: 9.0.x
+
+    - name: Restore dependencies
+      run: dotnet restore jellyfin-plugin-cadence-config.sln
+
+    - name: Check formatting
+      run: dotnet format jellyfin-plugin-cadence-config.sln --verify-no-changes
+
+    - name: Build (strict)
+      run: dotnet build jellyfin-plugin-cadence-config.sln --configuration Release --no-restore /p:TreatWarningsAsErrors=true
+
+    - name: Run unit tests with coverage
+      run: |
+        dotnet test Jellyfin.Plugin.CadenceConfig.Tests/Jellyfin.Plugin.CadenceConfig.Tests.csproj \
+          --configuration Release \
+          --no-build \
+          /p:CollectCoverage=true \
+          /p:CoverletOutputFormat=json \
+          /p:CoverletOutput=../coverage/coverage.json \
+          /p:Include="[Jellyfin.Plugin.CadenceConfig]*" \
+          /p:ThresholdType=line \
+          /p:Threshold=80
+
+    - name: CRAP score check
+      run: bash scripts/check-crap.sh coverage/coverage.json
+
+    - name: Line count check
+      run: bash scripts/check-line-count.sh 250
+
+  release:
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+
+    - name: Get next version
+      id: get_version
+      run: |
+        LATEST=$(git tag --sort=-v:refname | head -1 | sed 's/^v//')
+        if [ -z "$LATEST" ]; then
+          LATEST="0.0.0.0"
+        fi
+        NEXT=$(echo "$LATEST" | awk -F. '{$NF=$NF+1; print}' OFS=.)
+        echo "VERSION=$NEXT" >> $GITHUB_OUTPUT
+        echo "Next version: $NEXT"
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: 9.0.x
+
+    - name: Restore dependencies
+      run: dotnet restore Jellyfin.Plugin.CadenceConfig/Jellyfin.Plugin.CadenceConfig.csproj
+
+    - name: Build release
+      run: |
+        VERSION=${{ steps.get_version.outputs.VERSION }}
+        dotnet build Jellyfin.Plugin.CadenceConfig/Jellyfin.Plugin.CadenceConfig.csproj --configuration Release --no-restore \
+          /p:TreatWarningsAsErrors=true \
+          /p:Version=$VERSION \
+          /p:AssemblyVersion=$VERSION \
+          /p:FileVersion=$VERSION
+
+    - name: Create release zip
+      run: |
+        VERSION=${{ steps.get_version.outputs.VERSION }}
+        mkdir -p release
+        find Jellyfin.Plugin.CadenceConfig -path "*/bin/Release/net9.0/*.dll" -exec cp {} release/ \;
+        cd release
+        zip -r ../jellyfin-plugin-cadence-config-${VERSION}.zip .
+
+    - name: Calculate checksum
+      id: calculate_checksum
+      run: |
+        VERSION=${{ steps.get_version.outputs.VERSION }}
+        CHECKSUM=$(md5sum jellyfin-plugin-cadence-config-${VERSION}.zip | awk '{ print $1 }')
+        echo "CHECKSUM=$CHECKSUM" >> $GITHUB_OUTPUT
+
+    - name: Generate manifest.json
+      run: |
+        VERSION=${{ steps.get_version.outputs.VERSION }}
+        CHECKSUM=${{ steps.calculate_checksum.outputs.CHECKSUM }}
+        TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        cat > manifest.json << EOF
+        [
+          {
+            "guid": "7d49437c-2e97-430f-b6b7-fa9d58110448",
+            "name": "CadenceConfig",
+            "overview": "Serves the Cadence music client its runtime config and proxies Lidarr requests server-side.",
+            "description": "CadenceConfig lets a Jellyfin server operator set the Cadence client's runtime config (marlin search URL, sign-up URL, cast receiver id) once in the plugin dashboard so every client — web and native iOS — is auto-configured at sign-in. It also proxies the client's 'request missing music' calls to Lidarr through a curated allowlist, injecting the Lidarr API key server-side so the write credential never reaches a client.",
+            "owner": "johnpc",
+            "category": "General",
+            "versions": [
+              {
+                "version": "${VERSION}",
+                "changelog": "See the full changelog at [GitHub](https://github.com/johnpc/jellyfin-plugin-cadence-config/releases/tag/${VERSION})",
+                "targetAbi": "10.11.0.0",
+                "sourceUrl": "https://github.com/johnpc/jellyfin-plugin-cadence-config/releases/download/${VERSION}/jellyfin-plugin-cadence-config-${VERSION}.zip",
+                "checksum": "${CHECKSUM}",
+                "timestamp": "${TIMESTAMP}"
+              }
+            ]
+          }
+        ]
+        EOF
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.get_version.outputs.VERSION }}
+        files: |
+          jellyfin-plugin-cadence-config-${{ steps.get_version.outputs.VERSION }}.zip
+          manifest.json
+        generate_release_notes: true
+
+    - name: Commit manifest.json to main
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add manifest.json
+        git commit -m "chore: update manifest for ${{ steps.get_version.outputs.VERSION }} [skip ci]" || echo "no changes"
+        git push origin main
