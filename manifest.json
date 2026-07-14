@@ -6,6 +6,15 @@
     "description": "CadenceConfig lets a Jellyfin server operator set the Cadence client's runtime config (marlin search URL, sign-up URL, cast receiver id) once in the plugin dashboard so every client — web and native iOS — is auto-configured at sign-in. It also proxies the client's 'request missing music' calls to Lidarr through a curated allowlist, injecting the Lidarr API key server-side so the write credential never reaches a client.",
     "owner": "johnpc",
     "category": "General",
-    "versions": []
+    "versions": [
+      {
+        "version": "0.0.0.1",
+        "changelog": "See the full changelog at [GitHub](https://github.com/johnpc/jellyfin-plugin-cadence-config/releases/tag/0.0.0.1)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/johnpc/jellyfin-plugin-cadence-config/releases/download/0.0.0.1/jellyfin-plugin-cadence-config-0.0.0.1.zip",
+        "checksum": "b819eb578fe15a080f18954405fb633f",
+        "timestamp": "2026-07-14T15:05:25Z"
+      }
+    ]
   }
 ]
