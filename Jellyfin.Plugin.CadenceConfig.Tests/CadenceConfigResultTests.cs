@@ -63,5 +63,12 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
             result.CastReceiverAppId.Should().BeEmpty();
             result.LidarrProxy.Should().BeFalse();
         }
+
+        [Fact]
+        public void FromConfiguration_DeezerImportAlwaysAvailable()
+        {
+            // Deezer's public API needs no config, so the endpoint exists whenever the plugin does.
+            CadenceConfigResult.FromConfiguration(new PluginConfiguration()).DeezerImport.Should().BeTrue();
+        }
     }
 }

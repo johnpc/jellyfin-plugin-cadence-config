@@ -33,6 +33,13 @@ namespace Jellyfin.Plugin.CadenceConfig.Config
         public bool LidarrProxy { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether the Deezer playlist-import endpoint is available.
+        /// Always true when this plugin is installed — Deezer's public playlist API needs no config
+        /// or key — so the client can surface the "import a Deezer playlist" flow.
+        /// </summary>
+        public bool DeezerImport { get; set; }
+
+        /// <summary>
         /// Builds the client-facing config from the plugin configuration, deliberately omitting the
         /// Lidarr API key and only surfacing a boolean for whether the proxy is usable.
         /// </summary>
@@ -47,6 +54,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Config
                 CastReceiverAppId = config.CastReceiverAppId ?? string.Empty,
                 LidarrProxy = !string.IsNullOrWhiteSpace(config.LidarrUrl)
                     && !string.IsNullOrWhiteSpace(config.LidarrApiKey),
+                DeezerImport = true, // plugin serving this response IS the import endpoint's host
             };
         }
     }
