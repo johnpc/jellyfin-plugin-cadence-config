@@ -73,7 +73,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Sync
             var playlistId = await ResolvePlaylistAsync(existing, imported.Title, userId).ConfigureAwait(false);
             var added = await AddNewTracksAsync(playlistId, userId, match.FoundItemIds).ConfigureAwait(false);
 
-            SaveSubscription(userId, deezerId, playlistId);
+            SaveSubscription(userId, deezerId, playlistId, match.MissingArtists);
 
             _logger.LogInformation(
                 "Deezer import '{Name}': {Matched}/{Total} matched, {Added} newly added, {Missing} artists missing.",
@@ -112,14 +112,51 @@ namespace Jellyfin.Plugin.CadenceConfig.Sync
             var match = DeezerMatcher.Match(imported.Tracks, BuildLibraryIndex(subscription.UserId));
             var added = await AddNewTracksAsync(subscription.JellyfinPlaylistId, subscription.UserId, match.FoundItemIds).ConfigureAwait(false);
 
+            // Refresh the stored missing-artist list so the client's playlist page reflects the
+            // shrinking gap as Lidarr fills artists in, even between reads.
+            SaveSubscription(subscription.UserId, subscription.DeezerPlaylistId, subscription.JellyfinPlaylistId, match.MissingArtists);
+
             _logger.LogInformation(
-                "Deezer sync '{Name}': {Added} newly added ({Matched}/{Total} now owned).",
+                "Deezer sync '{Name}': {Added} newly added ({Matched}/{Total} now owned, {Missing} artists missing).",
                 imported.Title,
                 added,
                 match.FoundCount,
-                imported.Tracks.Count);
+                imported.Tracks.Count,
+                match.MissingArtistCount);
 
             return added;
+        }
+
+        /// <summary>
+        /// The current missing artists for a mirrored playlist, RECOMPUTED against the user's library
+        /// so an artist Lidarr has since filled in drops off immediately. Re-reads the Deezer playlist
+        /// and re-matches; if Deezer is unreachable this run, falls back to the persisted list so the
+        /// page still shows something. Returns null when no subscription mirrors that Jellyfin playlist.
+        /// </summary>
+        /// <param name="userId">The calling user id (must own the subscription).</param>
+        /// <param name="jellyfinPlaylistId">The Jellyfin playlist id shown on the client.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>The Deezer playlist id + current missing artists, or null when not a subscription.</returns>
+        public async Task<DeezerSubscriptionStatus?> GetMissingArtistsAsync(Guid userId, string jellyfinPlaylistId, CancellationToken cancellationToken)
+        {
+            var sub = Array.Find(
+                Plugin.GetConfiguration().DeezerSubscriptions,
+                s => s.UserId == userId && string.Equals(s.JellyfinPlaylistId, jellyfinPlaylistId, StringComparison.Ordinal));
+            if (sub == null)
+            {
+                return null;
+            }
+
+            var imported = await _deezer.FetchPlaylistAsync(sub.DeezerPlaylistId, cancellationToken).ConfigureAwait(false);
+            if (imported == null)
+            {
+                // Deezer unreachable — return the last-known persisted list rather than nothing.
+                return new DeezerSubscriptionStatus(sub.DeezerPlaylistId, sub.MissingArtists);
+            }
+
+            var match = DeezerMatcher.Match(imported.Tracks, BuildLibraryIndex(userId));
+            SaveSubscription(userId, sub.DeezerPlaylistId, sub.JellyfinPlaylistId, match.MissingArtists);
+            return new DeezerSubscriptionStatus(sub.DeezerPlaylistId, match.MissingArtists);
         }
 
         private static DeezerSubscription? FindSubscription(Guid userId, string deezerId) =>
@@ -168,7 +205,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Sync
             return additions.Count;
         }
 
-        private void SaveSubscription(Guid userId, string deezerId, string playlistId)
+        private void SaveSubscription(Guid userId, string deezerId, string playlistId, IReadOnlyList<string> missingArtists)
         {
             if (string.IsNullOrEmpty(deezerId))
             {
@@ -188,6 +225,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Sync
                     UserId = userId,
                     DeezerPlaylistId = deezerId,
                     JellyfinPlaylistId = playlistId,
+                    MissingArtists = missingArtists.ToArray(),
                 })
                 .ToArray();
 

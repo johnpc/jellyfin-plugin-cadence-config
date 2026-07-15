@@ -18,5 +18,14 @@ namespace Jellyfin.Plugin.CadenceConfig.Sync
 
         /// <summary>Gets or sets the owning Jellyfin user id (playlist owner + library scope).</summary>
         public Guid UserId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the artists whose tracks weren't in the library as of the last import/sync —
+        /// the Lidarr-request candidates the client shows on the playlist page. Persisted so the list
+        /// survives across sessions; the read endpoint recomputes it against the current library so a
+        /// now-owned artist drops off immediately (this is the last-known fallback). An array so it
+        /// round-trips through Jellyfin's XML config serialization cleanly (CA1819 suppressed).
+        /// </summary>
+        public string[] MissingArtists { get; set; } = Array.Empty<string>();
     }
 }

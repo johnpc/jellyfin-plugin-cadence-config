@@ -57,5 +57,33 @@ namespace Jellyfin.Plugin.CadenceConfig.Api
 
             return result;
         }
+
+        /// <summary>
+        /// Gets the current missing artists for a Deezer-mirrored Jellyfin playlist, recomputed against
+        /// the user's library so an artist Lidarr has filled in since import is already gone. Lets the
+        /// client show a persistent "request these" list on the playlist page across sessions.
+        /// </summary>
+        /// <param name="userId">The calling user's Jellyfin id (must own the subscription).</param>
+        /// <param name="playlistId">The Jellyfin playlist id shown on the client.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>The subscription status, or 404 when the playlist isn't a Deezer subscription.</returns>
+        [HttpGet("Subscription")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<DeezerSubscriptionStatus>> Subscription(
+            [FromQuery] Guid userId,
+            [FromQuery] string? playlistId,
+            CancellationToken cancellationToken)
+        {
+            var status = await _importService
+                .GetMissingArtistsAsync(userId, playlistId ?? string.Empty, cancellationToken)
+                .ConfigureAwait(false);
+            if (status == null)
+            {
+                return NotFound();
+            }
+
+            return status;
+        }
     }
 }
