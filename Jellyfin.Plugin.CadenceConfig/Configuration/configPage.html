@@ -39,6 +39,18 @@
                         <input id="LidarrApiKey" name="LidarrApiKey" type="text" is="emby-input" />
                         <div class="fieldDescription">Kept on the server — the plugin injects it into request calls. Never sent to clients.</div>
                     </div>
+                    <h3>Deezer playlist sync</h3>
+                    <p class="fieldDescription">
+                        Importing a Deezer playlist (via the Cadence client) creates a matching Jellyfin
+                        playlist and subscribes it. The "Sync Deezer Playlists" scheduled task then keeps
+                        each playlist up to date, adding tracks as they arrive in your library (e.g. after
+                        Lidarr fills in a previously-missing artist). It only adds — it never removes tracks.
+                    </p>
+                    <div class="inputContainer">
+                        <label for="SyncIntervalHours">Sync interval (hours):</label>
+                        <input id="SyncIntervalHours" name="SyncIntervalHours" type="number" min="1" is="emby-input" />
+                        <div class="fieldDescription">How often the sync task runs. Default 12. Takes effect after the next Jellyfin restart.</div>
+                    </div>
                     <div>
                         <button is="emby-button" type="submit" class="raised button-submit block emby-button">
                             <span>Save</span>
@@ -63,6 +75,7 @@
                         config.CastReceiverAppId = document.querySelector('#CastReceiverAppId').value;
                         config.LidarrUrl = document.querySelector('#LidarrUrl').value;
                         config.LidarrApiKey = document.querySelector('#LidarrApiKey').value;
+                        config.SyncIntervalHours = parseInt(document.querySelector('#SyncIntervalHours').value, 10) || 12;
 
                         ApiClient.updatePluginConfiguration(CadenceConfig.pluginUniqueId, config).then(function (result) {
                             Dashboard.processPluginConfigurationUpdateResult(result);
@@ -81,6 +94,7 @@
                     document.querySelector('#CastReceiverAppId').value = config.CastReceiverAppId || '';
                     document.querySelector('#LidarrUrl').value = config.LidarrUrl || '';
                     document.querySelector('#LidarrApiKey').value = config.LidarrApiKey || '';
+                    document.querySelector('#SyncIntervalHours').value = config.SyncIntervalHours || 12;
 
                     Dashboard.hideLoadingMsg();
                 });

@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using Jellyfin.Plugin.CadenceConfig.Deezer;
+using Jellyfin.Plugin.CadenceConfig.Sync;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +26,9 @@ namespace Jellyfin.Plugin.CadenceConfig.Registration
 
             // The Deezer import controller resolves this to read public playlists.
             serviceCollection.AddSingleton<DeezerClient>();
+
+            // Shared by the import controller (one-shot) and the sync scheduled task (recurring).
+            serviceCollection.AddSingleton<DeezerImportService>();
         }
     }
 }

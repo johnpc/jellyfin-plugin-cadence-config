@@ -1,3 +1,5 @@
+using System;
+using Jellyfin.Plugin.CadenceConfig.Sync;
 using MediaBrowser.Model.Plugins;
 
 namespace Jellyfin.Plugin.CadenceConfig.Configuration
@@ -18,6 +20,8 @@ namespace Jellyfin.Plugin.CadenceConfig.Configuration
             CastReceiverAppId = string.Empty;
             LidarrUrl = string.Empty;
             LidarrApiKey = string.Empty;
+            SyncIntervalHours = 12;
+            DeezerSubscriptions = Array.Empty<DeezerSubscription>();
         }
 
         /// <summary>
@@ -49,5 +53,18 @@ namespace Jellyfin.Plugin.CadenceConfig.Configuration
         /// plugin's Lidarr proxy attaches it to outbound requests inside the Jellyfin server only.
         /// </summary>
         public string LidarrApiKey { get; set; }
+
+        /// <summary>
+        /// Gets or sets how often (in hours) the scheduled task re-syncs every Deezer subscription,
+        /// adding newly-available library tracks to each mirrored Jellyfin playlist.
+        /// </summary>
+        public int SyncIntervalHours { get; set; }
+
+        /// <summary>
+        /// Gets or sets the persisted Deezer→Jellyfin playlist subscriptions the scheduled task keeps
+        /// in sync. An array because Jellyfin serializes plugin configuration as XML, which round-trips
+        /// arrays cleanly (CA1819 suppressed in .editorconfig with that justification).
+        /// </summary>
+        public DeezerSubscription[] DeezerSubscriptions { get; set; }
     }
 }
