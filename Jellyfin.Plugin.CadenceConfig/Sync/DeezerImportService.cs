@@ -233,28 +233,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Sync
             plugin.SaveConfiguration();
         }
 
-        private Dictionary<TrackKey, string> BuildLibraryIndex(Guid userId)
-        {
-            var items = _libraryManager.GetItemList(new InternalItemsQuery
-            {
-                IncludeItemTypes = new[] { BaseItemKind.Audio },
-                Recursive = true,
-            });
-
-            var index = new Dictionary<TrackKey, string>();
-            foreach (var item in items.OfType<Audio>())
-            {
-                var artist = item.Artists.Count > 0
-                    ? item.Artists[0]
-                    : item.AlbumArtists.Count > 0 ? item.AlbumArtists[0] : null;
-                var key = new TrackKey(artist, item.Name);
-                if (key.IsValid && !index.ContainsKey(key))
-                {
-                    index[key] = item.Id.ToString("N");
-                }
-            }
-
-            return index;
-        }
+        private Dictionary<TrackKey, string> BuildLibraryIndex(Guid userId) =>
+            LibraryIndex.Build(_libraryManager, userId);
     }
 }

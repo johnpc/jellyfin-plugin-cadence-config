@@ -99,33 +99,48 @@ jobs:
         CHECKSUM=$(md5sum jellyfin-plugin-cadence-config-${VERSION}.zip | awk '{ print $1 }')
         echo "CHECKSUM=$CHECKSUM" >> $GITHUB_OUTPUT
 
-    - name: Generate manifest.json
+    - name: Generate manifest.json (accumulating all versions)
       run: |
         VERSION=${{ steps.get_version.outputs.VERSION }}
         CHECKSUM=${{ steps.calculate_checksum.outputs.CHECKSUM }}
         TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        cat > manifest.json << EOF
-        [
-          {
+        # New version entry.
+        cat > new-version.json << EOF
+        {
+          "version": "${VERSION}",
+          "changelog": "See the full changelog at [GitHub](https://github.com/johnpc/jellyfin-plugin-cadence-config/releases/tag/${VERSION})",
+          "targetAbi": "10.11.0.0",
+          "sourceUrl": "https://github.com/johnpc/jellyfin-plugin-cadence-config/releases/download/${VERSION}/jellyfin-plugin-cadence-config-${VERSION}.zip",
+          "checksum": "${CHECKSUM}",
+          "timestamp": "${TIMESTAMP}"
+        }
+        EOF
+        # Fetch the previous release's manifest so versions accumulate (Jellyfin needs
+        # the full version list to offer upgrades). First release → empty list.
+        PREV_URL="https://github.com/johnpc/jellyfin-plugin-cadence-config/releases/latest/download/manifest.json"
+        curl -fsSL "$PREV_URL" -o prev-manifest.json || echo '[]' > prev-manifest.json
+        # Prepend the new version to the existing versions array (dedupe by version).
+        python3 - << 'PY'
+        import json
+        with open("prev-manifest.json") as f:
+            prev = json.load(f)
+        with open("new-version.json") as f:
+            new_ver = json.load(f)
+        entry = prev[0] if prev else {
             "guid": "7d49437c-2e97-430f-b6b7-fa9d58110448",
             "name": "CadenceConfig",
             "overview": "Serves the Cadence music client its runtime config and proxies Lidarr requests server-side.",
             "description": "CadenceConfig lets a Jellyfin server operator set the Cadence client's runtime config (marlin search URL, sign-up URL, cast receiver id) once in the plugin dashboard so every client — web and native iOS — is auto-configured at sign-in. It also proxies the client's 'request missing music' calls to Lidarr through a curated allowlist, injecting the Lidarr API key server-side so the write credential never reaches a client.",
             "owner": "johnpc",
             "category": "General",
-            "versions": [
-              {
-                "version": "${VERSION}",
-                "changelog": "See the full changelog at [GitHub](https://github.com/johnpc/jellyfin-plugin-cadence-config/releases/tag/${VERSION})",
-                "targetAbi": "10.11.0.0",
-                "sourceUrl": "https://github.com/johnpc/jellyfin-plugin-cadence-config/releases/download/${VERSION}/jellyfin-plugin-cadence-config-${VERSION}.zip",
-                "checksum": "${CHECKSUM}",
-                "timestamp": "${TIMESTAMP}"
-              }
-            ]
-          }
-        ]
-        EOF
+            "versions": [],
+        }
+        versions = [v for v in entry.get("versions", []) if v["version"] != new_ver["version"]]
+        entry["versions"] = [new_ver] + versions
+        with open("manifest.json", "w") as f:
+            json.dump([entry], f, indent=2)
+        PY
+        echo "Manifest now lists:" && python3 -c 'import json;print([v["version"] for v in json.load(open("manifest.json"))[0]["versions"]])'
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
@@ -135,11 +150,3 @@ jobs:
           jellyfin-plugin-cadence-config-${{ steps.get_version.outputs.VERSION }}.zip
           manifest.json
         generate_release_notes: true
-
-    - name: Commit manifest.json to main
-      run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add manifest.json
-        git commit -m "chore: update manifest for ${{ steps.get_version.outputs.VERSION }} [skip ci]" || echo "no changes"
-        git push origin main

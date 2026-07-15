@@ -57,10 +57,13 @@ The Requests feature turns on automatically once both the Lidarr URL and API key
 Add this plugin repository to Jellyfin (**Dashboard → Plugins → Repositories → +**):
 
 ```
-https://raw.githubusercontent.com/johnpc/jellyfin-plugin-cadence-config/main/manifest.json
+https://github.com/johnpc/jellyfin-plugin-cadence-config/releases/latest/download/manifest.json
 ```
 
-Then install **CadenceConfig** from the catalog and restart Jellyfin.
+Then install **CadenceConfig** from the catalog and restart Jellyfin. (The manifest
+is published as a release asset that accumulates every version, so Jellyfin always
+sees the newest release — the repo's branch protection blocks committing it to
+`main`, so the release asset is the source of truth.)
 
 ## Development
 
