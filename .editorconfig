@@ -69,3 +69,6 @@ dotnet_diagnostic.CA1822.severity = none
 # CA1308: TrackKey.Normalize deliberately lower-cases — it builds a case-insensitive MATCH key for
 # comparing Deezer track/artist names to the Jellyfin library, not a value to round-trip or display.
 dotnet_diagnostic.CA1308.severity = none
+# CA1819: PluginConfiguration.DeezerSubscriptions is an array because Jellyfin serializes plugin
+# config as XML, which round-trips arrays cleanly; a read-only collection would not deserialize back.
+dotnet_diagnostic.CA1819.severity = none
