@@ -66,3 +66,6 @@ dotnet_diagnostic.CA1056.severity = none
 # CA1822: MVC controller actions must be instance methods to be routed by ASP.NET, even when a
 # given action reads only static plugin config.
 dotnet_diagnostic.CA1822.severity = none
+# CA1308: TrackKey.Normalize deliberately lower-cases — it builds a case-insensitive MATCH key for
+# comparing Deezer track/artist names to the Jellyfin library, not a value to round-trip or display.
+dotnet_diagnostic.CA1308.severity = none
