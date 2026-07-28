@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
+using Jellyfin.Plugin.CadenceConfig.Chapters;
 using Jellyfin.Plugin.CadenceConfig.Deezer;
 using Jellyfin.Plugin.CadenceConfig.Sync;
 using MediaBrowser.Controller;
@@ -29,6 +30,9 @@ namespace Jellyfin.Plugin.CadenceConfig.Registration
 
             // Shared by the import controller (one-shot) and the sync scheduled task (recurring).
             serviceCollection.AddSingleton<DeezerImportService>();
+
+            // Extracts embedded audiobook (m4b) chapters Jellyfin doesn't surface for audio.
+            serviceCollection.AddSingleton<ChapterService>();
         }
     }
 }
