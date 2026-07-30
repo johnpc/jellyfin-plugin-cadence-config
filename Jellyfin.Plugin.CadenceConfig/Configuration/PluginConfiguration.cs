@@ -20,6 +20,8 @@ namespace Jellyfin.Plugin.CadenceConfig.Configuration
             CastReceiverAppId = string.Empty;
             LidarrUrl = string.Empty;
             LidarrApiKey = string.Empty;
+            MusicGrabberUrl = string.Empty;
+            MusicGrabberApiKey = string.Empty;
             SyncIntervalHours = 12;
             DeezerSubscriptions = Array.Empty<DeezerSubscription>();
         }
@@ -53,6 +55,19 @@ namespace Jellyfin.Plugin.CadenceConfig.Configuration
         /// plugin's Lidarr proxy attaches it to outbound requests inside the Jellyfin server only.
         /// </summary>
         public string LidarrApiKey { get; set; }
+
+        /// <summary>
+        /// Gets or sets the Music Grabber base URL (e.g. https://musicgrabber.jpc.io). When set with
+        /// an API key, a Deezer import fetches each MISSING track as a single song from the grabber
+        /// (server-side), tags it from the Deezer metadata, and adds it to the playlist.
+        /// </summary>
+        public string MusicGrabberUrl { get; set; }
+
+        /// <summary>
+        /// Gets or sets the Music Grabber API key. Sent only from the server to the grabber; unlike the
+        /// client's copy it never has to ship in a browser bundle.
+        /// </summary>
+        public string MusicGrabberApiKey { get; set; }
 
         /// <summary>
         /// Gets or sets how often (in hours) the scheduled task re-syncs every Deezer subscription,

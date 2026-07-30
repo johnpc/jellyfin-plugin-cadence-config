@@ -8,9 +8,11 @@ namespace Jellyfin.Plugin.CadenceConfig.Deezer
     /// </summary>
     /// <param name="FoundItemIds">Jellyfin item ids present in the library, in playlist order.</param>
     /// <param name="MissingArtists">Distinct artist names not found (for Lidarr requests).</param>
+    /// <param name="MissingTracks">The individual Deezer tracks not in the library (for per-track grabbing).</param>
     public sealed record DeezerMatchResult(
         IReadOnlyList<string> FoundItemIds,
-        IReadOnlyList<string> MissingArtists)
+        IReadOnlyList<string> MissingArtists,
+        IReadOnlyList<DeezerTrack> MissingTracks)
     {
         /// <summary>Gets the count of found tracks.</summary>
         public int FoundCount => FoundItemIds.Count;

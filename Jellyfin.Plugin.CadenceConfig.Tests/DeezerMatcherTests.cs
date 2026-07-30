@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using FluentAssertions;
 using Jellyfin.Plugin.CadenceConfig.Deezer;
 using Xunit;
@@ -52,6 +53,9 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
 
             result.FoundItemIds.Should().Equal("jf-omt"); // deduped
             result.MissingArtists.Should().Equal("Phoebe Bridgers"); // deduped by normalized name
+            // MissingTracks keeps EVERY missing track (not deduped by artist) for per-track grabbing.
+            result.MissingTracks.Should().HaveCount(2);
+            result.MissingTracks.Select(t => t.Title).Should().Equal("Motion Sickness", "Kyoto");
         }
 
         [Fact]

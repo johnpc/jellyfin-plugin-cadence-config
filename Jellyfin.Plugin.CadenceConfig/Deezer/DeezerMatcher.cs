@@ -24,6 +24,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Deezer
             var seenIds = new HashSet<string>();
             var missingArtists = new List<string>();
             var seenMissing = new HashSet<string>();
+            var missingTracks = new List<DeezerTrack>();
 
             foreach (var t in deezerTracks)
             {
@@ -41,13 +42,18 @@ namespace Jellyfin.Plugin.CadenceConfig.Deezer
                         foundIds.Add(id);
                     }
                 }
-                else if (!string.IsNullOrWhiteSpace(artist) && seenMissing.Add(TrackKey.Normalize(artist)))
+                else
                 {
-                    missingArtists.Add(artist.Trim());
+                    // Every missing track is a grab candidate; artists are deduped for Lidarr.
+                    missingTracks.Add(t);
+                    if (!string.IsNullOrWhiteSpace(artist) && seenMissing.Add(TrackKey.Normalize(artist)))
+                    {
+                        missingArtists.Add(artist.Trim());
+                    }
                 }
             }
 
-            return new DeezerMatchResult(foundIds, missingArtists);
+            return new DeezerMatchResult(foundIds, missingArtists, missingTracks);
         }
     }
 }

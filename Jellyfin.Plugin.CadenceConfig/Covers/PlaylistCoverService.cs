@@ -81,6 +81,21 @@ namespace Jellyfin.Plugin.CadenceConfig.Covers
             return generated;
         }
 
+        /// <summary>
+        /// Generate a cover for ONE playlist by id, if it doesn't already have art. Used right after a
+        /// Deezer import so the new playlist isn't briefly a placeholder. No-op when the id isn't a
+        /// playlist or it already has a cover.
+        /// </summary>
+        /// <param name="playlistId">The Jellyfin playlist id.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>True when a cover was generated.</returns>
+        public async Task<bool> CoverPlaylistAsync(Guid playlistId, CancellationToken cancellationToken)
+        {
+            return _libraryManager.GetItemById(playlistId) is Playlist playlist
+                && !playlist.HasImage(ImageType.Primary, 0)
+                && await TryGenerateAsync(playlist, cancellationToken).ConfigureAwait(false);
+        }
+
         private async Task<bool> TryGenerateAsync(Playlist playlist, CancellationToken cancellationToken)
         {
             try
