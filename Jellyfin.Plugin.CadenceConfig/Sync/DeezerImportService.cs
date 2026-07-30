@@ -5,7 +5,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Data.Enums;
+using Jellyfin.Plugin.CadenceConfig.Covers;
 using Jellyfin.Plugin.CadenceConfig.Deezer;
+using Jellyfin.Plugin.CadenceConfig.Grab;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Audio;
 using MediaBrowser.Controller.Library;
@@ -16,12 +18,10 @@ using Microsoft.Extensions.Logging;
 namespace Jellyfin.Plugin.CadenceConfig.Sync
 {
     /// <summary>
-    /// The shared engine behind both the one-shot Deezer import (the API controller) and the
-    /// scheduled re-sync (the task): read a public Deezer playlist, match its tracks against a
-    /// user's library, then create the Jellyfin playlist (first import) or additively top up the
-    /// existing one (re-sync). The set math is the pure, unit-tested <see cref="PlaylistSync"/> and
-    /// <see cref="DeezerMatcher"/>; this class is the live-Jellyfin plumbing around them, so it is
-    /// excluded from coverage exactly like the controllers.
+    /// The shared engine behind the one-shot Deezer import and the scheduled re-sync: read a public
+    /// Deezer playlist, match against the user's library, create/top-up the Jellyfin playlist, cover
+    /// it, and grab the missing tracks. Set math is the pure <see cref="PlaylistSync"/>/
+    /// <see cref="DeezerMatcher"/>; this is the live-Jellyfin plumbing, so it's excluded from coverage.
     /// </summary>
     [ExcludeFromCodeCoverage]
     public sealed class DeezerImportService
@@ -29,6 +29,8 @@ namespace Jellyfin.Plugin.CadenceConfig.Sync
         private readonly DeezerClient _deezer;
         private readonly ILibraryManager _libraryManager;
         private readonly IPlaylistManager _playlistManager;
+        private readonly GrabFulfillmentService _grabFulfillment;
+        private readonly PlaylistCoverService _coverService;
         private readonly ILogger<DeezerImportService> _logger;
 
         /// <summary>
@@ -37,16 +39,22 @@ namespace Jellyfin.Plugin.CadenceConfig.Sync
         /// <param name="deezer">The Deezer API client.</param>
         /// <param name="libraryManager">Jellyfin library manager (to index audio items).</param>
         /// <param name="playlistManager">Jellyfin playlist manager (to create/read/fill playlists).</param>
+        /// <param name="grabFulfillment">Fetches missing tracks via Music Grabber + tags them.</param>
+        /// <param name="coverService">Generates the imported playlist's cover.</param>
         /// <param name="logger">The logger.</param>
         public DeezerImportService(
             DeezerClient deezer,
             ILibraryManager libraryManager,
             IPlaylistManager playlistManager,
+            GrabFulfillmentService grabFulfillment,
+            PlaylistCoverService coverService,
             ILogger<DeezerImportService> logger)
         {
             _deezer = deezer;
             _libraryManager = libraryManager;
             _playlistManager = playlistManager;
+            _grabFulfillment = grabFulfillment;
+            _coverService = coverService;
             _logger = logger;
         }
 
@@ -69,19 +77,21 @@ namespace Jellyfin.Plugin.CadenceConfig.Sync
             var deezerId = DeezerPlaylistUrl.ParseId(url) ?? string.Empty;
             var match = DeezerMatcher.Match(imported.Tracks, BuildLibraryIndex(userId));
 
-            var existing = FindSubscription(userId, deezerId);
+            var existing = DeezerSubscriptionStore.Find(userId, deezerId);
             var playlistId = await ResolvePlaylistAsync(existing, imported.Title, userId).ConfigureAwait(false);
             var added = await AddNewTracksAsync(playlistId, userId, match.FoundItemIds).ConfigureAwait(false);
 
-            SaveSubscription(userId, deezerId, playlistId, match.MissingArtists);
+            DeezerSubscriptionStore.Save(userId, deezerId, playlistId, match.MissingArtists);
+            await CoverAndGrabAsync(playlistId, match.MissingTracks, cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation(
-                "Deezer import '{Name}': {Matched}/{Total} matched, {Added} newly added, {Missing} artists missing.",
+                "Deezer import '{Name}': {Matched}/{Total} matched, {Added} newly added, {Missing} artists missing, {MissingTracks} tracks queued to grab.",
                 imported.Title,
                 match.FoundCount,
                 imported.Tracks.Count,
                 added,
-                match.MissingArtistCount);
+                match.MissingArtistCount,
+                match.MissingTracks.Count);
 
             return new DeezerImportResult
             {
@@ -114,7 +124,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Sync
 
             // Refresh the stored missing-artist list so the client's playlist page reflects the
             // shrinking gap as Lidarr fills artists in, even between reads.
-            SaveSubscription(subscription.UserId, subscription.DeezerPlaylistId, subscription.JellyfinPlaylistId, match.MissingArtists);
+            DeezerSubscriptionStore.Save(subscription.UserId, subscription.DeezerPlaylistId, subscription.JellyfinPlaylistId, match.MissingArtists);
 
             _logger.LogInformation(
                 "Deezer sync '{Name}': {Added} newly added ({Matched}/{Total} now owned, {Missing} artists missing).",
@@ -155,14 +165,9 @@ namespace Jellyfin.Plugin.CadenceConfig.Sync
             }
 
             var match = DeezerMatcher.Match(imported.Tracks, BuildLibraryIndex(userId));
-            SaveSubscription(userId, sub.DeezerPlaylistId, sub.JellyfinPlaylistId, match.MissingArtists);
+            DeezerSubscriptionStore.Save(userId, sub.DeezerPlaylistId, sub.JellyfinPlaylistId, match.MissingArtists);
             return new DeezerSubscriptionStatus(sub.DeezerPlaylistId, match.MissingArtists);
         }
-
-        private static DeezerSubscription? FindSubscription(Guid userId, string deezerId) =>
-            Array.Find(
-                Plugin.GetConfiguration().DeezerSubscriptions,
-                s => s.UserId == userId && string.Equals(s.DeezerPlaylistId, deezerId, StringComparison.Ordinal));
 
         private async Task<string> ResolvePlaylistAsync(DeezerSubscription? existing, string title, Guid userId)
         {
@@ -205,35 +210,20 @@ namespace Jellyfin.Plugin.CadenceConfig.Sync
             return additions.Count;
         }
 
-        private void SaveSubscription(Guid userId, string deezerId, string playlistId, IReadOnlyList<string> missingArtists)
-        {
-            if (string.IsNullOrEmpty(deezerId))
-            {
-                return;
-            }
-
-            var plugin = Plugin.Instance;
-            if (plugin == null)
-            {
-                return;
-            }
-
-            var kept = plugin.Configuration.DeezerSubscriptions
-                .Where(s => !(s.UserId == userId && string.Equals(s.DeezerPlaylistId, deezerId, StringComparison.Ordinal)))
-                .Append(new DeezerSubscription
-                {
-                    UserId = userId,
-                    DeezerPlaylistId = deezerId,
-                    JellyfinPlaylistId = playlistId,
-                    MissingArtists = missingArtists.ToArray(),
-                })
-                .ToArray();
-
-            plugin.Configuration.DeezerSubscriptions = kept;
-            plugin.SaveConfiguration();
-        }
-
         private Dictionary<TrackKey, string> BuildLibraryIndex(Guid userId) =>
             LibraryIndex.Build(_libraryManager, userId);
+
+        /// <summary>Post-import side-effects: cover the new playlist now (not on the 6h task), and
+        /// kick off Music Grabber for the missing tracks in the background (the sync task folds the
+        /// landed files in later). No-ops where uncovered/ungrabbable or the grabber's unset.</summary>
+        private async Task CoverAndGrabAsync(string playlistId, IReadOnlyList<DeezerTrack> missing, CancellationToken cancellationToken)
+        {
+            if (Guid.TryParse(playlistId, out var pid))
+            {
+                await _coverService.CoverPlaylistAsync(pid, cancellationToken).ConfigureAwait(false);
+            }
+
+            _ = Task.Run(() => _grabFulfillment.FulfillAsync(missing, CancellationToken.None));
+        }
     }
 }
