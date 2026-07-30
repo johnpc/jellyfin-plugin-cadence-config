@@ -12,6 +12,7 @@ using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Audio;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Playlists;
+using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Playlists;
 using Microsoft.Extensions.Logging;
 
@@ -64,9 +65,10 @@ namespace Jellyfin.Plugin.CadenceConfig.Sync
         /// </summary>
         /// <param name="userId">The owning user id.</param>
         /// <param name="url">A Deezer playlist URL or bare id.</param>
+        /// <param name="isPublic">When true, mark the playlist public so it appears in the shared/community view.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The import result, or null when the Deezer playlist could not be read.</returns>
-        public async Task<DeezerImportResult?> ImportAsync(Guid userId, string? url, CancellationToken cancellationToken)
+        public async Task<DeezerImportResult?> ImportAsync(Guid userId, string? url, bool isPublic, CancellationToken cancellationToken)
         {
             var imported = await _deezer.FetchPlaylistAsync(url, cancellationToken).ConfigureAwait(false);
             if (imported == null)
@@ -80,6 +82,10 @@ namespace Jellyfin.Plugin.CadenceConfig.Sync
             var existing = DeezerSubscriptionStore.Find(userId, deezerId);
             var playlistId = await ResolvePlaylistAsync(existing, imported.Title, userId).ConfigureAwait(false);
             var added = await AddNewTracksAsync(playlistId, userId, match.FoundItemIds).ConfigureAwait(false);
+            if (isPublic)
+            {
+                await MakePublicAsync(playlistId, cancellationToken).ConfigureAwait(false);
+            }
 
             DeezerSubscriptionStore.Save(userId, deezerId, playlistId, match.MissingArtists);
             await CoverAndGrabAsync(playlistId, match.MissingTracks, cancellationToken).ConfigureAwait(false);
@@ -212,6 +218,21 @@ namespace Jellyfin.Plugin.CadenceConfig.Sync
 
         private Dictionary<TrackKey, string> BuildLibraryIndex(Guid userId) =>
             LibraryIndex.Build(_libraryManager, userId);
+
+        /// <summary>Mark the playlist public (OpenAccess) so it surfaces in the shared/community view.
+        /// Set on the entity directly because Jellyfin's UpdatePlaylist API resolves the user from the
+        /// request token, which a server-side/API-key call lacks. No-op when the id isn't a playlist.</summary>
+        private async Task MakePublicAsync(string playlistId, CancellationToken cancellationToken)
+        {
+            if (Guid.TryParse(playlistId, out var pid)
+                && _libraryManager.GetItemById(pid) is Playlist playlist
+                && !playlist.OpenAccess)
+            {
+                playlist.OpenAccess = true;
+                await playlist.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, cancellationToken).ConfigureAwait(false);
+                _logger.LogInformation("Deezer import: marked '{Name}' public.", playlist.Name);
+            }
+        }
 
         /// <summary>Post-import side-effects: cover the new playlist now (not on the 6h task), and
         /// kick off Music Grabber for the missing tracks in the background (the sync task folds the
