@@ -52,6 +52,13 @@ namespace Jellyfin.Plugin.CadenceConfig.Home
         /// <returns>The precomputed shelves.</returns>
         public HomeShelvesResult Build(User user)
         {
+            // NOTE: followed ARTISTS are deliberately NOT served here. Favorite-artist
+            // resolution on Jellyfin needs the dedicated /Artists query path; the generic
+            // MusicArtist + IsFavorite item query returns EMPTY on real servers (verified
+            // against the live library — /Items?IncludeItemTypes=MusicArtist&IsFavorite → 0,
+            // while /Artists?IsFavorite → the real 4). Rather than ship a broken empty
+            // "Your artists" shelf, the client fetches artists natively (one cheap /Artists
+            // call) even on this fast path. FollowedArtists is left empty by design.
             return new HomeShelvesResult
             {
                 LatestAlbums = Query(user, BaseItemKind.MusicAlbum, ItemSortBy.DateCreated, null),
@@ -59,7 +66,6 @@ namespace Jellyfin.Plugin.CadenceConfig.Home
                 SavedAlbums = Query(user, BaseItemKind.MusicAlbum, ItemSortBy.SortName, true),
                 RecentlyPlayed = Query(user, BaseItemKind.Audio, ItemSortBy.DatePlayed, null, played: true),
                 OnRepeat = Query(user, BaseItemKind.Audio, ItemSortBy.PlayCount, null, played: true),
-                FollowedArtists = QueryArtists(user),
             };
         }
 
@@ -77,21 +83,6 @@ namespace Jellyfin.Plugin.CadenceConfig.Home
             };
             var items = _libraryManager.GetItemList(query);
             return ToDtos(items, user);
-        }
-
-        private List<BaseItemDto> QueryArtists(User user)
-        {
-            // Followed = favorited artists. Artists live off the generic item query on this server,
-            // so filter MusicArtist by IsFavorite (mirrors the client's /Artists?IsFavorite call).
-            var query = new InternalItemsQuery(user)
-            {
-                IncludeItemTypes = new[] { BaseItemKind.MusicArtist },
-                Recursive = true,
-                Limit = ShelfLimit,
-                OrderBy = new[] { (ItemSortBy.SortName, SortOrder.Ascending) },
-                IsFavorite = true,
-            };
-            return ToDtos(_libraryManager.GetItemList(query), user);
         }
 
         private List<BaseItemDto> ToDtos(IReadOnlyList<BaseItem> items, User user)

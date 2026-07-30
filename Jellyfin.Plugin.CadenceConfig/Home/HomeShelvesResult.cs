@@ -27,7 +27,10 @@ namespace Jellyfin.Plugin.CadenceConfig.Home
         /// <summary>Gets the user's most-played songs ("On repeat" shelf).</summary>
         public IReadOnlyList<BaseItemDto> OnRepeat { get; init; } = new List<BaseItemDto>();
 
-        /// <summary>Gets the user's followed (favorited) artists ("Your artists" shelf).</summary>
-        public IReadOnlyList<BaseItemDto> FollowedArtists { get; init; } = new List<BaseItemDto>();
+        // NOTE: no FollowedArtists shelf. Favorite-artist resolution needs Jellyfin's
+        // dedicated /Artists query; the generic MusicArtist + IsFavorite item query
+        // returns empty on real servers (verified against the live library). The
+        // Cadence client fetches followed artists natively instead — see its
+        // useHomeShelves. Serving an empty shelf here would just shadow that.
     }
 }
