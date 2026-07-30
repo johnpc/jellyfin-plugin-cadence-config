@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,8 +21,10 @@ namespace Jellyfin.Plugin.CadenceConfig.Covers
     /// four distinct track/album images (<see cref="CoverSelection"/>), draws a 2×2 mosaic
     /// (<see cref="MosaicRenderer"/>), and saves it via Jellyfin's provider manager. NEVER touches a
     /// playlist that already has a Primary image (user-set art is preserved). Thin I/O plumbing around
-    /// the pure selection + render helpers, so it's excluded from coverage.
+    /// the pure selection + render helpers (CoverSelection/MosaicRenderer/NameCoverRenderer/WrapText,
+    /// which carry the unit-tested logic), so it's excluded from coverage.
     /// </summary>
+    [ExcludeFromCodeCoverage]
     public sealed class PlaylistCoverService
     {
         private readonly ILibraryManager _libraryManager;
