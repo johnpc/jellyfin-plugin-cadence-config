@@ -21,6 +21,11 @@
     <PackageReference Include="Jellyfin.Controller" Version="10.11.10" />
     <PackageReference Include="Jellyfin.Model" Version="10.11.10" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556" PrivateAssets="all" />
+    <!-- SkiaSharp for drawing the playlist mosaic. Compile-time only: the Jellyfin
+         server ships its own SkiaSharp.dll + native libSkiaSharp.so, so we must NOT
+         bundle our own (a duplicate/mismatched native lib would clash). Match the
+         server's 2.88.x and use its runtime copy. -->
+    <PackageReference Include="SkiaSharp" Version="2.88.8" Private="false" ExcludeAssets="runtime" />
   </ItemGroup>
 
   <ItemGroup>
