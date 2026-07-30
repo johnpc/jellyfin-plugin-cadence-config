@@ -19,9 +19,10 @@ namespace Jellyfin.Plugin.CadenceConfig.Grab
     [ExcludeFromCodeCoverage]
     public sealed class GrabFulfillmentService
     {
-        // Serial: the grabber returns 0/errors when searches arrive concurrently (verified live), and
-        // a background playlist backfill isn't time-critical. One track at a time is reliable.
-        private const int MaxConcurrent = 1;
+        // Up to 4 tracks in flight: MusicGrabberClient serializes the search+start calls internally
+        // (the grabber 500s on concurrent request bursts), but the long download POLL overlaps, so
+        // several can be downloading at once without hammering the grabber's search.
+        private const int MaxConcurrent = 4;
 
         private readonly MusicGrabberClient _grabber;
         private readonly ILogger<GrabFulfillmentService> _logger;

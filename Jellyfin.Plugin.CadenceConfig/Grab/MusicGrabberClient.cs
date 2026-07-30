@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Jellyfin.Plugin.CadenceConfig.Configuration;
 using Jellyfin.Plugin.CadenceConfig.Deezer;
 using Microsoft.Extensions.Logging;
 
@@ -18,6 +19,11 @@ namespace Jellyfin.Plugin.CadenceConfig.Grab
     [ExcludeFromCodeCoverage]
     public sealed class MusicGrabberClient
     {
+        // PROCESS-WIDE serial gate: the grabber 500s when searches arrive concurrently (verified live
+        // — a single search is a clean 200, two at once error). A per-call limit isn't enough because
+        // overlapping imports each run their own FulfillAsync; this static gate serializes across all.
+        private static readonly SemaphoreSlim SearchGate = new(1, 1);
+
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<MusicGrabberClient> _logger;
 
@@ -58,62 +64,10 @@ namespace Jellyfin.Plugin.CadenceConfig.Grab
                 var baseUrl = cfg.MusicGrabberUrl.TrimEnd('/');
                 var client = _httpClientFactory.CreateClient("CadenceConfig");
 
-                var query = string.IsNullOrWhiteSpace(artist) ? title : $"{artist} {title}";
-
-                // Search source "youtube" (fast single source), NOT "all": the multi-source search is
-                // slow and returns 0 under the concurrent load of a playlist import (verified live).
-                var search = await PostAsync<GrabSearchResponse>(
-                    client,
-                    baseUrl + "/api/search",
-                    cfg.MusicGrabberApiKey,
-                    new { query, limit = 15, source = "youtube" },
-                    cancellationToken).ConfigureAwait(false);
-                var pick = search is null ? null : GrabPick.Best(search.Results, title, artist);
-                if (search is null)
-                {
-                    _logger.LogWarning("Music Grabber: search returned null for {Artist} - {Title}.", artist, title);
-                    return false;
-                }
-
-                if (pick is null)
-                {
-                    _logger.LogWarning(
-                        "Music Grabber: no matching result among {Count} for {Artist} - {Title}.",
-                        search.Results.Count,
-                        artist,
-                        title);
-                    return false;
-                }
-
-                var job = await PostAsync<GrabJob>(
-                    client,
-                    baseUrl + "/api/download",
-                    cfg.MusicGrabberApiKey,
-                    new
-                    {
-                        video_id = pick.VideoId,
-                        title = pick.Title,
-                        artist = pick.Artist ?? pick.Channel ?? artist ?? string.Empty,
-                        source = pick.Source,
-                        source_url = pick.SourceUrl,
-                        search_token = search.SearchToken,
-                        download_type = "single",
-                        convert_to_flac = true,
-                        slskd_username = pick.SlskdUsername,
-                        slskd_filename = pick.SlskdFilename,
-                        slskd_size = pick.SlskdSize,
-
-                        // Clean Deezer metadata → the grabber tags + organises the file itself.
-                        album_artist = artist,
-                        album_name = track.Album?.Title,
-                        album_track_title = title,
-                        album_track_number = track.TrackPosition > 0 ? track.TrackPosition : (int?)null,
-                    },
-                    cancellationToken).ConfigureAwait(false);
-
+                // Search + start under the serial gate; then poll OUTSIDE it so downloads overlap.
+                var job = await SearchAndStartAsync(client, baseUrl, cfg, track, cancellationToken).ConfigureAwait(false);
                 if (job?.Id is null)
                 {
-                    _logger.LogWarning("Music Grabber: download did not start for {Artist} - {Title}.", artist, title);
                     return false;
                 }
 
@@ -125,6 +79,76 @@ namespace Jellyfin.Plugin.CadenceConfig.Grab
                 return false;
             }
         }
+
+        /// <summary>Run search + start-download under the process-wide gate (the grabber 500s on
+        /// concurrent request bursts), returning the started job. Polling happens OUTSIDE the gate so
+        /// downloads still overlap — only the quick kickoff calls are serialized.</summary>
+        private async Task<GrabJob?> SearchAndStartAsync(HttpClient client, string baseUrl, PluginConfiguration cfg, DeezerTrack track, CancellationToken cancellationToken)
+        {
+            var title = track.Title ?? string.Empty;
+            var artist = track.Artist?.Name;
+            await SearchGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var query = string.IsNullOrWhiteSpace(artist) ? title : $"{artist} {title}";
+                var search = await PostAsync<GrabSearchResponse>(
+                    client,
+                    baseUrl + "/api/search",
+                    cfg.MusicGrabberApiKey,
+                    new { query, limit = 15, source = "youtube" },
+                    cancellationToken).ConfigureAwait(false);
+                if (search is null)
+                {
+                    _logger.LogWarning("Music Grabber: search returned null for {Artist} - {Title}.", artist, title);
+                    return null;
+                }
+
+                var pick = GrabPick.Best(search.Results, title, artist);
+                if (pick is null)
+                {
+                    _logger.LogWarning("Music Grabber: no match among {Count} for {Artist} - {Title}.", search.Results.Count, artist, title);
+                    return null;
+                }
+
+                return await PostAsync<GrabJob>(
+                    client,
+                    baseUrl + "/api/download",
+                    cfg.MusicGrabberApiKey,
+                    DownloadBody(pick, search.SearchToken, track),
+                    cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                SearchGate.Release();
+            }
+        }
+
+#pragma warning disable CA1822 // instance (not static) to satisfy SA1204 ordering after instance members
+        private object DownloadBody(GrabResult pick, string? searchToken, DeezerTrack track)
+        {
+            var artist = track.Artist?.Name;
+            return new
+            {
+                video_id = pick.VideoId,
+                title = pick.Title,
+                artist = pick.Artist ?? pick.Channel ?? artist ?? string.Empty,
+                source = pick.Source,
+                source_url = pick.SourceUrl,
+                search_token = searchToken,
+                download_type = "single",
+                convert_to_flac = true,
+                slskd_username = pick.SlskdUsername,
+                slskd_filename = pick.SlskdFilename,
+                slskd_size = pick.SlskdSize,
+
+                // Clean Deezer metadata → the grabber tags + organises the file itself.
+                album_artist = artist,
+                album_name = track.Album?.Title,
+                album_track_title = track.Title,
+                album_track_number = track.TrackPosition > 0 ? track.TrackPosition : (int?)null,
+            };
+        }
+#pragma warning restore CA1822
 
         private async Task<bool> PollAsync(HttpClient client, string baseUrl, string key, string jobId, CancellationToken cancellationToken)
         {
