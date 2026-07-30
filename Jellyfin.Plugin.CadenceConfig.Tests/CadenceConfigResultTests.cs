@@ -70,5 +70,13 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
             // Deezer's public API needs no config, so the endpoint exists whenever the plugin does.
             CadenceConfigResult.FromConfiguration(new PluginConfiguration()).DeezerImport.Should().BeTrue();
         }
+
+        [Fact]
+        public void FromConfiguration_HomeShelvesAlwaysAvailable()
+        {
+            // The Home-shelves endpoint is served whenever the plugin is installed, so the client
+            // can always take the fast one-call Home path (and falls back to native when false).
+            CadenceConfigResult.FromConfiguration(new PluginConfiguration()).HomeShelves.Should().BeTrue();
+        }
     }
 }

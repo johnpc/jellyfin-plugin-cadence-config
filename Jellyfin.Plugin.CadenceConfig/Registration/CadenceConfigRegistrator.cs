@@ -4,6 +4,7 @@ using Jellyfin.Plugin.CadenceConfig.Chapters;
 using Jellyfin.Plugin.CadenceConfig.Covers;
 using Jellyfin.Plugin.CadenceConfig.Deezer;
 using Jellyfin.Plugin.CadenceConfig.Grab;
+using Jellyfin.Plugin.CadenceConfig.Home;
 using Jellyfin.Plugin.CadenceConfig.Sync;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
@@ -43,6 +44,11 @@ namespace Jellyfin.Plugin.CadenceConfig.Registration
             // + files them from the metadata we pass, so no tagging is needed on our side).
             serviceCollection.AddSingleton<MusicGrabberClient>();
             serviceCollection.AddSingleton<GrabFulfillmentService>();
+
+            // Precomputed Home shelves: the cache is shared between the scheduled task (writer) and
+            // the controller (reader); the service computes the shelves for a user.
+            serviceCollection.AddSingleton<HomeShelvesCache>();
+            serviceCollection.AddSingleton<HomeShelvesService>();
         }
     }
 }
