@@ -40,6 +40,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Api
         /// </summary>
         /// <param name="userId">The calling user's Jellyfin id (playlist owner + library scope).</param>
         /// <param name="url">A Deezer playlist share URL or bare id.</param>
+        /// <param name="isPublic">When true, mark the playlist public so it appears in the shared/community view.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The created/updated playlist + missing artists, or an error status.</returns>
         [HttpPost("Import")]
@@ -47,9 +48,10 @@ namespace Jellyfin.Plugin.CadenceConfig.Api
         public async Task<ActionResult<DeezerImportResult>> Import(
             [FromQuery] Guid userId,
             [FromQuery] string? url,
+            [FromQuery] bool isPublic,
             CancellationToken cancellationToken)
         {
-            var result = await _importService.ImportAsync(userId, url, cancellationToken).ConfigureAwait(false);
+            var result = await _importService.ImportAsync(userId, url, isPublic, cancellationToken).ConfigureAwait(false);
             if (result == null)
             {
                 return BadRequest("Could not read that Deezer playlist (private, not found, or bad URL).");
