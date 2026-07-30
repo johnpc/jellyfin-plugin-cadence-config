@@ -1828,23 +1828,200 @@
         }
       }
     },
+    "/Users/xss/repo/jellyfin-plugin-cadence-config/Jellyfin.Plugin.CadenceConfig/Covers/NameCoverRenderer.cs": {
+      "Jellyfin.Plugin.CadenceConfig.Covers.NameCoverRenderer": {
+        "System.Byte[] Jellyfin.Plugin.CadenceConfig.Covers.NameCoverRenderer::Render(System.String)": {
+          "Lines": {
+            "22": 8,
+            "23": 8,
+            "24": 2,
+            "25": 2,
+            "28": 6,
+            "29": 6,
+            "30": 6,
+            "31": 6,
+            "33": 6,
+            "34": 6,
+            "35": 6,
+            "36": 6,
+            "37": 8
+          },
+          "Branches": [
+            {
+              "Line": 23,
+              "Offset": 11,
+              "EndOffset": 13,
+              "Path": 0,
+              "Ordinal": 0,
+              "Hits": 2
+            },
+            {
+              "Line": 23,
+              "Offset": 11,
+              "EndOffset": 19,
+              "Path": 1,
+              "Ordinal": 1,
+              "Hits": 6
+            }
+          ]
+        },
+        "System.Void Jellyfin.Plugin.CadenceConfig.Covers.NameCoverRenderer::PaintBackground(SkiaSharp.SKCanvas,System.String)": {
+          "Lines": {
+            "41": 6,
+            "42": 6,
+            "43": 6,
+            "44": 6,
+            "45": 6,
+            "46": 6,
+            "47": 6,
+            "48": 6,
+            "49": 6,
+            "50": 6,
+            "51": 6,
+            "52": 6,
+            "53": 12
+          },
+          "Branches": []
+        },
+        "System.Void Jellyfin.Plugin.CadenceConfig.Covers.NameCoverRenderer::DrawTitle(SkiaSharp.SKCanvas,System.String)": {
+          "Lines": {
+            "57": 6,
+            "59": 6,
+            "60": 6,
+            "61": 6,
+            "62": 6,
+            "63": 6,
+            "64": 6,
+            "65": 6,
+            "66": 6,
+            "67": 6,
+            "68": 6,
+            "69": 6,
+            "70": 6,
+            "71": 6,
+            "73": 6,
+            "74": 6,
+            "75": 6,
+            "76": 0,
+            "77": 0,
+            "78": 0,
+            "79": 0,
+            "81": 6,
+            "82": 6,
+            "83": 6,
+            "84": 34,
+            "85": 8,
+            "86": 8,
+            "87": 8,
+            "88": 8,
+            "89": 12
+          },
+          "Branches": [
+            {
+              "Line": 75,
+              "Offset": 154,
+              "EndOffset": 91,
+              "Path": 1,
+              "Ordinal": 3,
+              "Hits": 0
+            },
+            {
+              "Line": 75,
+              "Offset": 133,
+              "EndOffset": 135,
+              "Path": 0,
+              "Ordinal": 0,
+              "Hits": 6
+            },
+            {
+              "Line": 75,
+              "Offset": 133,
+              "EndOffset": 149,
+              "Path": 1,
+              "Ordinal": 1,
+              "Hits": 0
+            },
+            {
+              "Line": 75,
+              "Offset": 154,
+              "EndOffset": 156,
+              "Path": 0,
+              "Ordinal": 2,
+              "Hits": 6
+            },
+            {
+              "Line": 84,
+              "Offset": 267,
+              "EndOffset": 225,
+              "Path": 1,
+              "Ordinal": 5,
+              "Hits": 8
+            },
+            {
+              "Line": 84,
+              "Offset": 267,
+              "EndOffset": 269,
+              "Path": 0,
+              "Ordinal": 4,
+              "Hits": 6
+            }
+          ]
+        },
+        "System.Boolean Jellyfin.Plugin.CadenceConfig.Covers.NameCoverRenderer::TooTall(System.Int32,SkiaSharp.SKPaint)": {
+          "Lines": {
+            "92": 6
+          },
+          "Branches": []
+        },
+        "System.Single Jellyfin.Plugin.CadenceConfig.Covers.NameCoverRenderer::StableHue(System.String)": {
+          "Lines": {
+            "97": 6,
+            "98": 6,
+            "99": 254,
+            "100": 118,
+            "101": 118,
+            "102": 118,
+            "104": 6,
+            "105": 6
+          },
+          "Branches": [
+            {
+              "Line": 99,
+              "Offset": 45,
+              "EndOffset": 14,
+              "Path": 1,
+              "Ordinal": 1,
+              "Hits": 118
+            },
+            {
+              "Line": 99,
+              "Offset": 45,
+              "EndOffset": 47,
+              "Path": 0,
+              "Ordinal": 0,
+              "Hits": 6
+            }
+          ]
+        }
+      }
+    },
     "/Users/xss/repo/jellyfin-plugin-cadence-config/Jellyfin.Plugin.CadenceConfig/Covers/PlaylistCoverService.cs": {
       "Jellyfin.Plugin.CadenceConfig.Covers.PlaylistCoverService": {
         "System.String Jellyfin.Plugin.CadenceConfig.Covers.PlaylistCoverService::PrimaryOrAlbumImagePath(MediaBrowser.Controller.Entities.BaseItem)": {
           "Lines": {
-            "128": 0,
-            "129": 0,
-            "130": 0,
-            "131": 0,
-            "134": 0,
-            "135": 0,
-            "136": 0,
-            "137": 0,
-            "138": 0
+            "109": 0,
+            "110": 0,
+            "111": 0,
+            "112": 0,
+            "115": 0,
+            "116": 0,
+            "117": 0,
+            "118": 0,
+            "119": 0
           },
           "Branches": [
             {
-              "Line": 129,
+              "Line": 110,
               "Offset": 11,
               "EndOffset": 13,
               "Path": 0,
@@ -1852,7 +2029,7 @@
               "Hits": 0
             },
             {
-              "Line": 129,
+              "Line": 110,
               "Offset": 11,
               "EndOffset": 25,
               "Path": 1,
@@ -1860,7 +2037,7 @@
               "Hits": 0
             },
             {
-              "Line": 134,
+              "Line": 115,
               "Offset": 32,
               "EndOffset": 34,
               "Path": 0,
@@ -1868,7 +2045,7 @@
               "Hits": 0
             },
             {
-              "Line": 134,
+              "Line": 115,
               "Offset": 32,
               "EndOffset": 38,
               "Path": 1,
@@ -1876,7 +2053,7 @@
               "Hits": 0
             },
             {
-              "Line": 135,
+              "Line": 116,
               "Offset": 45,
               "EndOffset": 47,
               "Path": 0,
@@ -1884,7 +2061,7 @@
               "Hits": 0
             },
             {
-              "Line": 135,
+              "Line": 116,
               "Offset": 45,
               "EndOffset": 57,
               "Path": 1,
@@ -1892,7 +2069,7 @@
               "Hits": 0
             },
             {
-              "Line": 135,
+              "Line": 116,
               "Offset": 55,
               "EndOffset": 57,
               "Path": 0,
@@ -1900,7 +2077,7 @@
               "Hits": 0
             },
             {
-              "Line": 135,
+              "Line": 116,
               "Offset": 55,
               "EndOffset": 60,
               "Path": 1,
@@ -1922,6 +2099,100 @@
             "45": 0
           },
           "Branches": []
+        }
+      },
+      "Jellyfin.Plugin.CadenceConfig.Covers.PlaylistCoverService/<BuildCoverAsync>d__7": {
+        "System.Void Jellyfin.Plugin.CadenceConfig.Covers.PlaylistCoverService/<BuildCoverAsync>d__7::MoveNext()": {
+          "Lines": {
+            "125": 0,
+            "126": 0,
+            "127": 0,
+            "128": 0,
+            "129": 0,
+            "130": 0,
+            "131": 0,
+            "133": 0,
+            "134": 0,
+            "135": 0,
+            "136": 0,
+            "137": 0,
+            "138": 0,
+            "139": 0,
+            "140": 0,
+            "142": 0,
+            "143": 0,
+            "144": 0,
+            "145": 0,
+            "147": 0,
+            "150": 0,
+            "151": 0
+          },
+          "Branches": [
+            {
+              "Line": 128,
+              "Offset": 143,
+              "EndOffset": 77,
+              "Path": 1,
+              "Ordinal": 1,
+              "Hits": 0
+            },
+            {
+              "Line": 128,
+              "Offset": 143,
+              "EndOffset": 145,
+              "Path": 0,
+              "Ordinal": 0,
+              "Hits": 0
+            },
+            {
+              "Line": 134,
+              "Offset": 216,
+              "EndOffset": 221,
+              "Path": 0,
+              "Ordinal": 2,
+              "Hits": 0
+            },
+            {
+              "Line": 137,
+              "Offset": 479,
+              "EndOffset": 275,
+              "Path": 1,
+              "Ordinal": 5,
+              "Hits": 0
+            },
+            {
+              "Line": 137,
+              "Offset": 479,
+              "EndOffset": 484,
+              "Path": 0,
+              "Ordinal": 4,
+              "Hits": 0
+            },
+            {
+              "Line": 143,
+              "Offset": 548,
+              "EndOffset": 550,
+              "Path": 0,
+              "Ordinal": 6,
+              "Hits": 0
+            },
+            {
+              "Line": 143,
+              "Offset": 548,
+              "EndOffset": 560,
+              "Path": 1,
+              "Ordinal": 7,
+              "Hits": 0
+            },
+            {
+              "Line": 134,
+              "Offset": 216,
+              "EndOffset": 575,
+              "Path": 1,
+              "Ordinal": 3,
+              "Hits": 0
+            }
+          ]
         }
       },
       "Jellyfin.Plugin.CadenceConfig.Covers.PlaylistCoverService/<GenerateAsync>d__4": {
@@ -2027,113 +2298,201 @@
             "86": 0,
             "87": 0,
             "88": 0,
-            "89": 0,
-            "90": 0,
+            "91": 0,
             "92": 0,
             "93": 0,
             "94": 0,
             "95": 0,
-            "98": 0,
+            "96": 0,
+            "97": 0,
             "99": 0,
             "100": 0,
             "101": 0,
             "102": 0,
-            "104": 0,
-            "105": 0,
-            "106": 0,
-            "107": 0,
-            "110": 0,
-            "111": 0,
-            "112": 0,
-            "113": 0,
-            "114": 0,
-            "115": 0,
-            "116": 0,
-            "118": 0,
-            "119": 0,
-            "120": 0,
-            "121": 0,
-            "123": 0
+            "104": 0
           },
           "Branches": [
             {
               "Line": 82,
               "Offset": 26,
-              "EndOffset": 40,
+              "EndOffset": 37,
               "Path": 0,
               "Ordinal": 0,
               "Hits": 0
             },
             {
-              "Line": 87,
-              "Offset": 166,
-              "EndOffset": 100,
-              "Path": 1,
-              "Ordinal": 3,
-              "Hits": 0
-            },
-            {
-              "Line": 87,
-              "Offset": 166,
-              "EndOffset": 168,
+              "Line": 86,
+              "Offset": 198,
+              "EndOffset": 200,
               "Path": 0,
               "Ordinal": 2,
               "Hits": 0
             },
             {
-              "Line": 93,
-              "Offset": 239,
-              "EndOffset": 241,
-              "Path": 0,
-              "Ordinal": 4,
-              "Hits": 0
-            },
-            {
-              "Line": 93,
-              "Offset": 239,
-              "EndOffset": 249,
+              "Line": 86,
+              "Offset": 198,
+              "EndOffset": 208,
               "Path": 1,
-              "Ordinal": 5,
-              "Hits": 0
-            },
-            {
-              "Line": 99,
-              "Offset": 506,
-              "EndOffset": 302,
-              "Path": 1,
-              "Ordinal": 7,
-              "Hits": 0
-            },
-            {
-              "Line": 99,
-              "Offset": 506,
-              "EndOffset": 511,
-              "Path": 0,
-              "Ordinal": 6,
-              "Hits": 0
-            },
-            {
-              "Line": 105,
-              "Offset": 575,
-              "EndOffset": 577,
-              "Path": 0,
-              "Ordinal": 8,
-              "Hits": 0
-            },
-            {
-              "Line": 105,
-              "Offset": 575,
-              "EndOffset": 585,
-              "Path": 1,
-              "Ordinal": 9,
+              "Ordinal": 3,
               "Hits": 0
             },
             {
               "Line": 82,
               "Offset": 26,
-              "EndOffset": 602,
+              "EndOffset": 225,
               "Path": 1,
               "Ordinal": 1,
+              "Hits": 0
+            }
+          ]
+        }
+      }
+    },
+    "/Users/xss/repo/jellyfin-plugin-cadence-config/Jellyfin.Plugin.CadenceConfig/Covers/WrapText.cs": {
+      "Jellyfin.Plugin.CadenceConfig.Covers.WrapText": {
+        "System.Collections.Generic.IReadOnlyList`1<System.String> Jellyfin.Plugin.CadenceConfig.Covers.WrapText::Wrap(System.String,SkiaSharp.SKPaint,System.Single,System.Int32)": {
+          "Lines": {
+            "22": 16
+          },
+          "Branches": []
+        },
+        "System.Collections.Generic.IReadOnlyList`1<System.String> Jellyfin.Plugin.CadenceConfig.Covers.WrapText::Wrap(System.String,System.Func`2<System.String,System.Single>,System.Single,System.Int32)": {
+          "Lines": {
+            "35": 10,
+            "36": 10,
+            "37": 10,
+            "38": 10,
+            "39": 98,
+            "40": 34,
+            "42": 34,
+            "43": 34,
+            "44": 34,
+            "45": 4,
+            "46": 4,
+            "47": 4,
+            "48": 4,
+            "50": 30,
+            "51": 30,
+            "52": 30,
+            "53": 34,
+            "55": 10,
+            "56": 10,
+            "57": 10,
+            "58": 10,
+            "60": 10,
+            "61": 10
+          },
+          "Branches": [
+            {
+              "Line": 39,
+              "Offset": 143,
+              "EndOffset": 31,
+              "Path": 1,
+              "Ordinal": 9,
+              "Hits": 34
+            },
+            {
+              "Line": 43,
+              "Offset": 57,
+              "EndOffset": 59,
+              "Path": 0,
+              "Ordinal": 0,
+              "Hits": 24
+            },
+            {
+              "Line": 43,
+              "Offset": 57,
+              "EndOffset": 74,
+              "Path": 1,
+              "Ordinal": 1,
+              "Hits": 10
+            },
+            {
+              "Line": 44,
+              "Offset": 80,
+              "EndOffset": 82,
+              "Path": 0,
+              "Ordinal": 2,
+              "Hits": 25
+            },
+            {
+              "Line": 44,
+              "Offset": 89,
+              "EndOffset": 91,
+              "Path": 0,
+              "Ordinal": 4,
+              "Hits": 15
+            },
+            {
+              "Line": 44,
+              "Offset": 80,
+              "EndOffset": 104,
+              "Path": 1,
+              "Ordinal": 3,
+              "Hits": 19
+            },
+            {
+              "Line": 44,
+              "Offset": 89,
+              "EndOffset": 104,
+              "Path": 1,
+              "Ordinal": 5,
+              "Hits": 19
+            },
+            {
+              "Line": 44,
+              "Offset": 109,
+              "EndOffset": 111,
+              "Path": 0,
+              "Ordinal": 6,
+              "Hits": 4
+            },
+            {
+              "Line": 44,
+              "Offset": 109,
+              "EndOffset": 126,
+              "Path": 1,
+              "Ordinal": 7,
+              "Hits": 30
+            },
+            {
+              "Line": 39,
+              "Offset": 143,
+              "EndOffset": 145,
+              "Path": 0,
+              "Ordinal": 8,
+              "Hits": 10
+            },
+            {
+              "Line": 55,
+              "Offset": 158,
+              "EndOffset": 160,
+              "Path": 0,
+              "Ordinal": 10,
+              "Hits": 10
+            },
+            {
+              "Line": 55,
+              "Offset": 158,
+              "EndOffset": 170,
+              "Path": 1,
+              "Ordinal": 11,
+              "Hits": 10
+            },
+            {
+              "Line": 60,
+              "Offset": 176,
+              "EndOffset": 178,
+              "Path": 0,
+              "Ordinal": 12,
+              "Hits": 10
+            },
+            {
+              "Line": 60,
+              "Offset": 176,
+              "EndOffset": 181,
+              "Path": 1,
+              "Ordinal": 13,
               "Hits": 0
             }
           ]

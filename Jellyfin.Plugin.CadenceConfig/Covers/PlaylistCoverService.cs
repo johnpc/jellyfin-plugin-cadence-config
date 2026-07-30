@@ -82,26 +82,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Covers
         {
             try
             {
-                var tracks = playlist.GetLinkedChildren();
-                var trackImagePaths = new List<string?>(tracks.Count);
-                foreach (var track in tracks)
-                {
-                    trackImagePaths.Add(PrimaryOrAlbumImagePath(track));
-                }
-
-                var tilePaths = CoverSelection.PickTiles(trackImagePaths);
-                if (tilePaths.Count == 0)
-                {
-                    return false; // nothing to draw — leave the placeholder
-                }
-
-                var sources = new List<byte[]>(tilePaths.Count);
-                foreach (var path in tilePaths)
-                {
-                    sources.Add(await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false));
-                }
-
-                var png = MosaicRenderer.Render(sources);
+                var png = await BuildCoverAsync(playlist, cancellationToken).ConfigureAwait(false);
                 if (png is null)
                 {
                     return false;
@@ -135,6 +116,38 @@ namespace Jellyfin.Plugin.CadenceConfig.Covers
             return album is not null && album.HasImage(ImageType.Primary, 0)
                 ? album.GetImagePath(ImageType.Primary, 0)
                 : null;
+        }
+
+        /// <summary>Build the cover PNG for a playlist: a mosaic from its tracks' album art when there's
+        /// enough, else a name-based tile (so empty playlists — which Jellyfin leaves uncovered — still
+        /// get art). Returns null only when even the name cover can't render (blank name).</summary>
+        private async Task<byte[]?> BuildCoverAsync(Playlist playlist, CancellationToken cancellationToken)
+        {
+            var tracks = playlist.GetLinkedChildren();
+            var trackImagePaths = new List<string?>(tracks.Count);
+            foreach (var track in tracks)
+            {
+                trackImagePaths.Add(PrimaryOrAlbumImagePath(track));
+            }
+
+            var tilePaths = CoverSelection.PickTiles(trackImagePaths);
+            if (tilePaths.Count > 0)
+            {
+                var sources = new List<byte[]>(tilePaths.Count);
+                foreach (var path in tilePaths)
+                {
+                    sources.Add(await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false));
+                }
+
+                var mosaic = MosaicRenderer.Render(sources);
+                if (mosaic is not null)
+                {
+                    return mosaic;
+                }
+            }
+
+            // No usable track art (empty playlist, or tracks without covers) → name tile.
+            return NameCoverRenderer.Render(playlist.Name);
         }
     }
 }
