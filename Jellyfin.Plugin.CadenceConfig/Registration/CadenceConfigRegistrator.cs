@@ -35,7 +35,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Registration
             // Extracts embedded audiobook (m4b) chapters Jellyfin doesn't surface for audio.
             serviceCollection.AddSingleton<ChapterService>();
 
-            // Generates mosaic covers for art-less playlists (PlaylistCoverTask runs it).
+            // Generates mosaic/name covers for art-less playlists (PlaylistCoverTask runs it).
             serviceCollection.AddSingleton<PlaylistCoverService>();
         }
     }
