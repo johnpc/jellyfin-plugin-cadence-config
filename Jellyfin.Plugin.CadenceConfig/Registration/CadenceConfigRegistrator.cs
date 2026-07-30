@@ -39,9 +39,9 @@ namespace Jellyfin.Plugin.CadenceConfig.Registration
             // Generates mosaic/name covers for art-less playlists (PlaylistCoverTask runs it).
             serviceCollection.AddSingleton<PlaylistCoverService>();
 
-            // Music Grabber: fetch + tag Deezer-missing tracks server-side during import.
+            // Music Grabber: fetch Deezer-missing tracks server-side during import (the grabber tags
+            // + files them from the metadata we pass, so no tagging is needed on our side).
             serviceCollection.AddSingleton<MusicGrabberClient>();
-            serviceCollection.AddSingleton<TrackTagger>();
             serviceCollection.AddSingleton<GrabFulfillmentService>();
         }
     }

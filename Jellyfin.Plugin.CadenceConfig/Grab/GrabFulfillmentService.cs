@@ -4,7 +4,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.CadenceConfig.Deezer;
-using MediaBrowser.Controller.Library;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.CadenceConfig.Grab
@@ -20,33 +19,29 @@ namespace Jellyfin.Plugin.CadenceConfig.Grab
     [ExcludeFromCodeCoverage]
     public sealed class GrabFulfillmentService
     {
-        private const int MaxConcurrent = 3;
+        // Serial: the grabber returns 0/errors when searches arrive concurrently (verified live), and
+        // a background playlist backfill isn't time-critical. One track at a time is reliable.
+        private const int MaxConcurrent = 1;
 
         private readonly MusicGrabberClient _grabber;
-        private readonly TrackTagger _tagger;
-        private readonly ILibraryManager _libraryManager;
         private readonly ILogger<GrabFulfillmentService> _logger;
 
         /// <summary>Initializes a new instance of the <see cref="GrabFulfillmentService"/> class.</summary>
         /// <param name="grabber">The Music Grabber client.</param>
-        /// <param name="tagger">The ffmpeg track tagger.</param>
-        /// <param name="libraryManager">Jellyfin library manager (to queue a rescan).</param>
         /// <param name="logger">The logger.</param>
         public GrabFulfillmentService(
             MusicGrabberClient grabber,
-            TrackTagger tagger,
-            ILibraryManager libraryManager,
             ILogger<GrabFulfillmentService> logger)
         {
             _grabber = grabber;
-            _tagger = tagger;
-            _libraryManager = libraryManager;
             _logger = logger;
         }
 
         /// <summary>
-        /// Grab + tag each missing track (no-op when the grabber isn't configured). Returns how many
-        /// were successfully downloaded. Queues a library scan at the end if anything landed.
+        /// Grab each missing track via Music Grabber (no-op when unconfigured), bounded-concurrent.
+        /// The grabber tags + files each track from the metadata we pass and rescans the library
+        /// itself, so there's nothing to tag or scan here. Returns how many downloaded; grabber misses
+        /// fall back to the Lidarr per-artist request (still in the import's MissingArtists).
         /// </summary>
         /// <param name="missing">The Deezer tracks not found in the library.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
@@ -63,13 +58,18 @@ namespace Jellyfin.Plugin.CadenceConfig.Grab
             var tasks = new List<Task>(missing.Count);
             foreach (var track in missing)
             {
+                if (string.IsNullOrWhiteSpace(track.Title))
+                {
+                    continue;
+                }
+
                 await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
                 tasks.Add(Task.Run(
                     async () =>
                     {
                         try
                         {
-                            if (await GrabOneAsync(track, cancellationToken).ConfigureAwait(false))
+                            if (await _grabber.GrabAsync(track, cancellationToken).ConfigureAwait(false))
                             {
                                 Interlocked.Increment(ref grabbed);
                             }
@@ -83,35 +83,8 @@ namespace Jellyfin.Plugin.CadenceConfig.Grab
             }
 
             await Task.WhenAll(tasks).ConfigureAwait(false);
-
-            if (grabbed > 0)
-            {
-                _logger.LogInformation("Grab fulfillment: {Count} of {Total} missing track(s) downloaded; queuing scan.", grabbed, missing.Count);
-                _libraryManager.QueueLibraryScan();
-            }
-
+            _logger.LogInformation("Grab fulfillment: {Count} of {Total} missing track(s) downloaded.", grabbed, missing.Count);
             return grabbed;
-        }
-
-        private async Task<bool> GrabOneAsync(DeezerTrack track, CancellationToken cancellationToken)
-        {
-            var title = track.Title ?? string.Empty;
-            var artist = track.Artist?.Name ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(title))
-            {
-                return false;
-            }
-
-            var path = await _grabber.GrabAsync(title, artist, cancellationToken).ConfigureAwait(false);
-            if (path is null)
-            {
-                return false; // grabber miss → Lidarr fallback (still in MissingArtists)
-            }
-
-            await _tagger
-                .TagAsync(path, title, artist, track.Album?.Title, track.TrackPosition, track.Album?.CoverXl, cancellationToken)
-                .ConfigureAwait(false);
-            return true;
         }
     }
 }
