@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using Jellyfin.Plugin.CadenceConfig.Chapters;
+using Jellyfin.Plugin.CadenceConfig.Covers;
 using Jellyfin.Plugin.CadenceConfig.Deezer;
 using Jellyfin.Plugin.CadenceConfig.Sync;
 using MediaBrowser.Controller;
@@ -33,6 +34,9 @@ namespace Jellyfin.Plugin.CadenceConfig.Registration
 
             // Extracts embedded audiobook (m4b) chapters Jellyfin doesn't surface for audio.
             serviceCollection.AddSingleton<ChapterService>();
+
+            // Generates mosaic covers for art-less playlists (PlaylistCoverTask runs it).
+            serviceCollection.AddSingleton<PlaylistCoverService>();
         }
     }
 }
