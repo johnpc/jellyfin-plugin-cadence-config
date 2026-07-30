@@ -63,7 +63,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Home
             };
         }
 
-        private IReadOnlyList<BaseItemDto> Query(
+        private List<BaseItemDto> Query(
             User user, BaseItemKind kind, ItemSortBy sortBy, bool? favorite, bool played = false)
         {
             var query = new InternalItemsQuery(user)
@@ -79,7 +79,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Home
             return ToDtos(items, user);
         }
 
-        private IReadOnlyList<BaseItemDto> QueryArtists(User user)
+        private List<BaseItemDto> QueryArtists(User user)
         {
             // Followed = favorited artists. Artists live off the generic item query on this server,
             // so filter MusicArtist by IsFavorite (mirrors the client's /Artists?IsFavorite call).
@@ -94,7 +94,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Home
             return ToDtos(_libraryManager.GetItemList(query), user);
         }
 
-        private IReadOnlyList<BaseItemDto> ToDtos(IReadOnlyList<BaseItem> items, User user)
+        private List<BaseItemDto> ToDtos(IReadOnlyList<BaseItem> items, User user)
         {
             return items.Select(i => _dtoService.GetBaseItemDto(i, Fields, user)).ToList();
         }
