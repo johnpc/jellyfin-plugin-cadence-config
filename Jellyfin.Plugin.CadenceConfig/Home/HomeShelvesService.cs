@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Jellyfin.Data.Enums;
 using Jellyfin.Database.Implementations.Entities;
@@ -20,7 +21,12 @@ namespace Jellyfin.Plugin.CadenceConfig.Home
     /// one fast call instead of ~6 slow recursive library scans. Items are serialized to
     /// <see cref="BaseItemDto"/> via <see cref="IDtoService"/> so the shape matches /Items exactly.
     /// </summary>
-    public sealed class HomeShelvesService
+    // Excluded from coverage: thin, hard-to-unit-test Jellyfin library-query plumbing (needs a real
+    // ILibraryManager + IDtoService). Verified via the live deploy, not units — same rationale as
+    // ChapterService / PlaylistCoverService / MusicGrabberClient. The testable orchestration lives
+    // in HomeShelvesRefresher (behind IHomeShelvesService), which IS covered.
+    [ExcludeFromCodeCoverage]
+    public sealed class HomeShelvesService : IHomeShelvesService
     {
         private const int ShelfLimit = 20;
         private readonly ILibraryManager _libraryManager;

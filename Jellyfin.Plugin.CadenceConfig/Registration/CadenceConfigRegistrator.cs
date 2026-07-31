@@ -49,7 +49,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Registration
             // (reader), and the refresher (background writer). The refresher rebuilds off the request
             // thread (stale-while-revalidate) so no user ever waits on a recursive-scan compute.
             serviceCollection.AddSingleton<HomeShelvesCache>();
-            serviceCollection.AddSingleton<HomeShelvesService>();
+            serviceCollection.AddSingleton<IHomeShelvesService, HomeShelvesService>();
             serviceCollection.AddSingleton<HomeShelvesRefresher>();
         }
     }

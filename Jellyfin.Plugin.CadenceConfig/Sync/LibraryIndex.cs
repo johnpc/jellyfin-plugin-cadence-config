@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.CadenceConfig.Deezer;
@@ -14,6 +15,9 @@ namespace Jellyfin.Plugin.CadenceConfig.Sync
     /// <see cref="DeezerMatcher"/> resolves Deezer tracks against. Extracted from the import service so
     /// each file stays within the line limit; the mapping itself is straight library plumbing.
     /// </summary>
+    // Excluded from coverage: thin ILibraryManager query plumbing (enumerate audio → key map),
+    // like HomeShelvesService/ChapterService. The matching LOGIC (TrackKey) is separately tested.
+    [ExcludeFromCodeCoverage]
     public static class LibraryIndex
     {
         /// <summary>
