@@ -74,5 +74,33 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
             hit!.Value.Result.Should().BeSameAs(second);
             hit.Value.Stale.Should().BeFalse();
         }
+
+        [Fact]
+        public void Invalidate_MakesTheNextGetAMiss()
+        {
+            var cache = new HomeShelvesCache();
+            var id = Guid.NewGuid();
+            cache.Set(id, new HomeShelvesResult(), T0);
+            cache.Get(id, T0).Should().NotBeNull();
+
+            cache.Invalidate(id);
+
+            cache.Get(id, T0).Should().BeNull(); // forces a fresh rebuild
+        }
+
+        [Fact]
+        public void Clear_DropsEveryUser()
+        {
+            var cache = new HomeShelvesCache();
+            var a = Guid.NewGuid();
+            var b = Guid.NewGuid();
+            cache.Set(a, new HomeShelvesResult(), T0);
+            cache.Set(b, new HomeShelvesResult(), T0);
+
+            cache.Clear();
+
+            cache.Get(a, T0).Should().BeNull();
+            cache.Get(b, T0).Should().BeNull();
+        }
     }
 }
