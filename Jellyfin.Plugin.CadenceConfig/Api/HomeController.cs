@@ -81,5 +81,29 @@ namespace Jellyfin.Plugin.CadenceConfig.Api
             _ = _refresher.RefreshAsync(user, () => DateTime.UtcNow);
             return StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
+
+        /// <summary>
+        /// Force-regenerate the caller's Home shelves: drop their cached entry and rebuild it fresh
+        /// in the background. Backs the "Refresh Home" action in the client's Settings, for when a
+        /// user wants their shelves recomputed now (e.g. after a big batch of likes) rather than
+        /// waiting for the daily prewarm / stale window. Returns 202 immediately — never blocks.
+        /// </summary>
+        /// <param name="userId">The calling user's Jellyfin id.</param>
+        /// <returns>202 Accepted (rebuild kicked off), or 404 for an unknown user.</returns>
+        [HttpPost("Home/Refresh")]
+        [ProducesResponseType(StatusCodes.Status202Accepted)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public ActionResult RefreshHome([FromQuery] Guid userId)
+        {
+            var user = _userManager.GetUserById(userId);
+            if (user is null)
+            {
+                return NotFound();
+            }
+
+            _cache.Invalidate(userId);
+            _ = _refresher.RefreshAsync(user, () => DateTime.UtcNow);
+            return Accepted();
+        }
     }
 }

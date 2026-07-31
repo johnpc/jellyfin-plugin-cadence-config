@@ -44,5 +44,14 @@ namespace Jellyfin.Plugin.CadenceConfig.Home
 
             return (entry.Result, now - entry.At > FreshFor);
         }
+
+        /// <summary>Drops a user's cached entry so the next request is a cold miss (rebuilt fresh).
+        /// Used by the "refresh Home" action so a user can force-regenerate their shelves.</summary>
+        /// <param name="userId">The user id to invalidate.</param>
+        public void Invalidate(Guid userId) => _byUser.TryRemove(userId, out _);
+
+        /// <summary>Drops EVERY user's cached entry (admin "regenerate all"). The next request per
+        /// user is a cold miss that rebuilds fresh (or the daily task repopulates).</summary>
+        public void Clear() => _byUser.Clear();
     }
 }
