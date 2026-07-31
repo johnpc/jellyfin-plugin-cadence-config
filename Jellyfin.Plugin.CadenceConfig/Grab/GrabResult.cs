@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 
 namespace Jellyfin.Plugin.CadenceConfig.Grab
 {
     /// <summary>One search result from Music Grabber (a candidate download for a query).</summary>
+    [ExcludeFromCodeCoverage] // plain serialization DTO — auto-property getters, no logic
     public sealed class GrabResult
     {
         /// <summary>Gets or sets the source-specific id (e.g. YouTube video id).</summary>

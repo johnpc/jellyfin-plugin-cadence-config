@@ -14,7 +14,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Home
     /// </summary>
     public sealed class HomeShelvesRefresher
     {
-        private readonly HomeShelvesService _service;
+        private readonly IHomeShelvesService _service;
         private readonly HomeShelvesCache _cache;
         private readonly ILogger<HomeShelvesRefresher> _logger;
         private readonly ConcurrentDictionary<Guid, byte> _inFlight = new();
@@ -24,7 +24,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Home
         /// <param name="cache">The per-user cache to populate.</param>
         /// <param name="logger">The logger.</param>
         public HomeShelvesRefresher(
-            HomeShelvesService service,
+            IHomeShelvesService service,
             HomeShelvesCache cache,
             ILogger<HomeShelvesRefresher> logger)
         {

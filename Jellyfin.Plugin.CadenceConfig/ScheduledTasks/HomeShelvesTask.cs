@@ -23,7 +23,7 @@ namespace Jellyfin.Plugin.CadenceConfig.ScheduledTasks
     [ExcludeFromCodeCoverage]
     public sealed class HomeShelvesTask : IScheduledTask
     {
-        private readonly HomeShelvesService _service;
+        private readonly IHomeShelvesService _service;
         private readonly HomeShelvesCache _cache;
         private readonly IUserManager _userManager;
         private readonly ILogger<HomeShelvesTask> _logger;
@@ -36,7 +36,7 @@ namespace Jellyfin.Plugin.CadenceConfig.ScheduledTasks
         /// <param name="userManager">Enumerates the users to precompute for.</param>
         /// <param name="logger">The logger.</param>
         public HomeShelvesTask(
-            HomeShelvesService service,
+            IHomeShelvesService service,
             HomeShelvesCache cache,
             IUserManager userManager,
             ILogger<HomeShelvesTask> logger)

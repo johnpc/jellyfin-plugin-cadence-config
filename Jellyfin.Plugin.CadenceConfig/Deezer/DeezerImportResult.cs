@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Jellyfin.Plugin.CadenceConfig.Deezer
 {
@@ -7,6 +8,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Deezer
     /// how many tracks were added, and the artists whose tracks aren't in the library yet (which the
     /// client offers to request via Lidarr).
     /// </summary>
+    [ExcludeFromCodeCoverage] // plain serialization DTO — auto-property getters, no logic
     public sealed class DeezerImportResult
     {
         /// <summary>Gets or sets the created/updated Jellyfin playlist id.</summary>
