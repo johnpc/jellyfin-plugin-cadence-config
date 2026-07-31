@@ -78,5 +78,13 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
             // can always take the fast one-call Home path (and falls back to native when false).
             CadenceConfigResult.FromConfiguration(new PluginConfiguration()).HomeShelves.Should().BeTrue();
         }
+
+        [Fact]
+        public void FromConfiguration_AudiobooksAlwaysAvailable()
+        {
+            // The audiobooks endpoint is served whenever the plugin is installed, so the client can
+            // always take the fast one-call path (and falls back to the native scan when false).
+            CadenceConfigResult.FromConfiguration(new PluginConfiguration()).Audiobooks.Should().BeTrue();
+        }
     }
 }
