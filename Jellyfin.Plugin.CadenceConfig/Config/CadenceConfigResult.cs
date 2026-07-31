@@ -48,6 +48,14 @@ namespace Jellyfin.Plugin.CadenceConfig.Config
         public bool HomeShelves { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether the precomputed audiobook-library endpoint
+        /// (GET /Cadence/Audiobooks) is available. Always true when this plugin is installed — the
+        /// endpoint is always served — so the client takes the fast one-call path instead of a slow
+        /// recursive AudioBook scan, and falls back to the native scan when this is false.
+        /// </summary>
+        public bool Audiobooks { get; set; }
+
+        /// <summary>
         /// Builds the client-facing config from the plugin configuration, deliberately omitting the
         /// Lidarr API key and only surfacing a boolean for whether the proxy is usable.
         /// </summary>
@@ -64,6 +72,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Config
                     && !string.IsNullOrWhiteSpace(config.LidarrApiKey),
                 DeezerImport = true, // plugin serving this response IS the import endpoint's host
                 HomeShelves = true, // plugin serving this response IS the Home-shelves endpoint's host
+                Audiobooks = true, // plugin serving this response IS the audiobooks endpoint's host
             };
         }
     }

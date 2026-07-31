@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
+using Jellyfin.Plugin.CadenceConfig.Audiobooks;
 using Jellyfin.Plugin.CadenceConfig.Chapters;
 using Jellyfin.Plugin.CadenceConfig.Covers;
 using Jellyfin.Plugin.CadenceConfig.Deezer;
@@ -51,6 +52,13 @@ namespace Jellyfin.Plugin.CadenceConfig.Registration
             serviceCollection.AddSingleton<HomeShelvesCache>();
             serviceCollection.AddSingleton<IHomeShelvesService, HomeShelvesService>();
             serviceCollection.AddSingleton<HomeShelvesRefresher>();
+
+            // Precomputed audiobook library: same stale-while-revalidate pattern as Home. The cache
+            // is shared between the daily task, the controller (reader), and the refresher (background
+            // writer), so the client skips the slow recursive AudioBook scan on the Audiobooks tab.
+            serviceCollection.AddSingleton<AudiobooksCache>();
+            serviceCollection.AddSingleton<IAudiobooksService, AudiobooksService>();
+            serviceCollection.AddSingleton<AudiobooksRefresher>();
         }
     }
 }
