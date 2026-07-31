@@ -48,11 +48,13 @@ namespace Jellyfin.Plugin.CadenceConfig.Audiobooks
             _dtoService = dtoService;
         }
 
-        // Overview drives the book detail; Album/AlbumArtist/ParentId/IndexNumber (multi-file
-        // grouping) and Artists ride on the DTO. Image tags feed the shelf cards.
+        // Overview drives the book detail; DateCreated backs the client's "Recently added"
+        // sort (LastPlayedDate for "Recently played" rides on UserData automatically);
+        // Album/AlbumArtist/ParentId/IndexNumber (multi-file grouping) and Artists ride on the
+        // DTO. Image tags feed the shelf cards.
         private static DtoOptions Fields => new DtoOptions(false)
         {
-            Fields = new[] { ItemFields.Overview, ItemFields.PrimaryImageAspectRatio },
+            Fields = new[] { ItemFields.Overview, ItemFields.DateCreated, ItemFields.PrimaryImageAspectRatio },
             ImageTypeLimit = 1,
             EnableImages = true,
         };
