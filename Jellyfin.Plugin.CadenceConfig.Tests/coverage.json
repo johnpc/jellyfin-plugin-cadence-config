@@ -2698,137 +2698,15 @@
       "Jellyfin.Plugin.CadenceConfig.Chapters.AudiobookChapter": {
         "System.String Jellyfin.Plugin.CadenceConfig.Chapters.AudiobookChapter::get_Name()": {
           "Lines": {
-            "14": 31
+            "14": 17
           },
           "Branches": []
         },
         "System.Double Jellyfin.Plugin.CadenceConfig.Chapters.AudiobookChapter::get_Start()": {
           "Lines": {
-            "18": 22
+            "18": 12
           },
           "Branches": []
-        }
-      }
-    },
-    "/private/tmp/jellyfin-plugin-cadence-config/Jellyfin.Plugin.CadenceConfig/Chapters/ChapterMapper.cs": {
-      "Jellyfin.Plugin.CadenceConfig.Chapters.ChapterMapper": {
-        "System.Collections.Generic.IReadOnlyList`1<Jellyfin.Plugin.CadenceConfig.Chapters.AudiobookChapter> Jellyfin.Plugin.CadenceConfig.Chapters.ChapterMapper::ToClientChapters(System.Collections.Generic.IReadOnlyList`1<MediaBrowser.Model.Entities.ChapterInfo>)": {
-          "Lines": {
-            "27": 7,
-            "29": 2,
-            "32": 11,
-            "35": 5,
-            "37": 1,
-            "40": 10,
-            "42": 1,
-            "45": 3,
-            "46": 5,
-            "47": 5,
-            "48": 5,
-            "49": 5,
-            "50": 5,
-            "51": 5,
-            "52": 5,
-            "53": 3
-          },
-          "Branches": [
-            {
-              "Line": 27,
-              "Offset": 1,
-              "EndOffset": 3,
-              "Path": 0,
-              "Ordinal": 0,
-              "Hits": 6
-            },
-            {
-              "Line": 27,
-              "Offset": 1,
-              "EndOffset": 11,
-              "Path": 1,
-              "Ordinal": 1,
-              "Hits": 2
-            },
-            {
-              "Line": 27,
-              "Offset": 9,
-              "EndOffset": 11,
-              "Path": 0,
-              "Ordinal": 2,
-              "Hits": 2
-            },
-            {
-              "Line": 27,
-              "Offset": 9,
-              "EndOffset": 17,
-              "Path": 1,
-              "Ordinal": 3,
-              "Hits": 5
-            },
-            {
-              "Line": 35,
-              "Offset": 67,
-              "EndOffset": 69,
-              "Path": 0,
-              "Ordinal": 4,
-              "Hits": 2
-            },
-            {
-              "Line": 35,
-              "Offset": 83,
-              "EndOffset": 85,
-              "Path": 0,
-              "Ordinal": 6,
-              "Hits": 1
-            },
-            {
-              "Line": 35,
-              "Offset": 67,
-              "EndOffset": 91,
-              "Path": 1,
-              "Ordinal": 5,
-              "Hits": 4
-            },
-            {
-              "Line": 35,
-              "Offset": 83,
-              "EndOffset": 91,
-              "Path": 1,
-              "Ordinal": 7,
-              "Hits": 4
-            },
-            {
-              "Line": 40,
-              "Offset": 128,
-              "EndOffset": 130,
-              "Path": 0,
-              "Ordinal": 8,
-              "Hits": 1
-            },
-            {
-              "Line": 40,
-              "Offset": 128,
-              "EndOffset": 136,
-              "Path": 1,
-              "Ordinal": 9,
-              "Hits": 3
-            },
-            {
-              "Line": 46,
-              "Offset": 17,
-              "EndOffset": 19,
-              "Path": 0,
-              "Ordinal": 0,
-              "Hits": 3
-            },
-            {
-              "Line": 46,
-              "Offset": 17,
-              "EndOffset": 27,
-              "Path": 1,
-              "Ordinal": 1,
-              "Hits": 2
-            }
-          ]
         }
       }
     },
