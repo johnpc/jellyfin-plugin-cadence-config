@@ -4,25 +4,45 @@ using System.Collections.Concurrent;
 namespace Jellyfin.Plugin.CadenceConfig.Home
 {
     /// <summary>
-    /// Holds the last-computed Home shelves per user, keyed by user id. The scheduled
-    /// <c>HomeShelvesTask</c> recomputes and stores; the controller reads instantly. A miss (never
-    /// computed, or task hasn't run yet) returns null so the controller computes on demand for that
-    /// one request — the client still gets an answer, just not from cache. Thread-safe: the task
-    /// writes while requests read.
+    /// Per-user cache of computed Home shelves, with a freshness timestamp so the controller can do
+    /// stale-while-revalidate: a fresh entry is served instantly; a stale one is STILL served
+    /// instantly (no user ever waits) while a background refresh runs; a miss returns null so the
+    /// controller triggers a background build and lets the client fall back to native queries for
+    /// that one request. The daily <c>HomeShelvesTask</c> pre-warms every user so misses are rare.
+    /// Thread-safe: the task/background refreshes write while requests read (ConcurrentDictionary +
+    /// atomic swap — Get never blocks on a rebuild).
     /// </summary>
     public sealed class HomeShelvesCache
     {
-        private readonly ConcurrentDictionary<Guid, HomeShelvesResult> _byUser = new();
+        /// <summary>How long a cached entry is considered fresh; past this it's served stale while a
+        /// background refresh runs. Pre-warmed daily, so this mainly bounds how stale an active
+        /// user's shelves get between the daily run and their next visit's background refresh.</summary>
+        public static readonly TimeSpan FreshFor = TimeSpan.FromHours(6);
 
-        /// <summary>Stores the freshly-computed shelves for a user.</summary>
+        private readonly ConcurrentDictionary<Guid, (HomeShelvesResult Result, DateTime At)> _byUser
+            = new();
+
+        /// <summary>Stores freshly-computed shelves for a user, stamped now.</summary>
         /// <param name="userId">The user id.</param>
         /// <param name="result">The computed shelves.</param>
-        public void Set(Guid userId, HomeShelvesResult result) => _byUser[userId] = result;
+        /// <param name="now">The current UTC time (injected for testability).</param>
+        public void Set(Guid userId, HomeShelvesResult result, DateTime now) =>
+            _byUser[userId] = (result, now);
 
-        /// <summary>Gets the cached shelves for a user, or null on a miss.</summary>
+        /// <summary>Gets the cached entry for a user, or null on a miss. `stale` is true when the
+        /// entry is older than <see cref="FreshFor"/> — the caller serves it anyway and refreshes
+        /// in the background.</summary>
         /// <param name="userId">The user id.</param>
-        /// <returns>The cached shelves, or null.</returns>
-        public HomeShelvesResult? Get(Guid userId) =>
-            _byUser.TryGetValue(userId, out var result) ? result : null;
+        /// <param name="now">The current UTC time (injected for testability).</param>
+        /// <returns>The cached shelves + whether they're stale, or null on a miss.</returns>
+        public (HomeShelvesResult Result, bool Stale)? Get(Guid userId, DateTime now)
+        {
+            if (!_byUser.TryGetValue(userId, out var entry))
+            {
+                return null;
+            }
+
+            return (entry.Result, now - entry.At > FreshFor);
+        }
     }
 }

@@ -45,10 +45,12 @@ namespace Jellyfin.Plugin.CadenceConfig.Registration
             serviceCollection.AddSingleton<MusicGrabberClient>();
             serviceCollection.AddSingleton<GrabFulfillmentService>();
 
-            // Precomputed Home shelves: the cache is shared between the scheduled task (writer) and
-            // the controller (reader); the service computes the shelves for a user.
+            // Precomputed Home shelves: the cache is shared between the daily task, the controller
+            // (reader), and the refresher (background writer). The refresher rebuilds off the request
+            // thread (stale-while-revalidate) so no user ever waits on a recursive-scan compute.
             serviceCollection.AddSingleton<HomeShelvesCache>();
             serviceCollection.AddSingleton<HomeShelvesService>();
+            serviceCollection.AddSingleton<HomeShelvesRefresher>();
         }
     }
 }

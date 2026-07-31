@@ -7,24 +7,42 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
 {
     public class HomeShelvesCacheTests
     {
+        private static readonly DateTime T0 = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
         [Fact]
         public void Get_ReturnsNull_OnMiss()
         {
-            // A cold cache (task hasn't run for this user) must return null so the controller
-            // computes on demand rather than serving empty shelves.
-            new HomeShelvesCache().Get(Guid.NewGuid()).Should().BeNull();
+            // Cold cache → null so the controller triggers a background build + 503 fallback.
+            new HomeShelvesCache().Get(Guid.NewGuid(), T0).Should().BeNull();
         }
 
         [Fact]
-        public void Set_ThenGet_ReturnsStoredResult()
+        public void Set_ThenGet_ReturnsStoredResult_Fresh()
         {
             var cache = new HomeShelvesCache();
             var id = Guid.NewGuid();
             var result = new HomeShelvesResult();
 
-            cache.Set(id, result);
+            cache.Set(id, result, T0);
+            var hit = cache.Get(id, T0);
 
-            cache.Get(id).Should().BeSameAs(result);
+            hit.Should().NotBeNull();
+            hit!.Value.Result.Should().BeSameAs(result);
+            hit.Value.Stale.Should().BeFalse();
+        }
+
+        [Fact]
+        public void Get_MarksStale_PastTheFreshnessWindow()
+        {
+            var cache = new HomeShelvesCache();
+            var id = Guid.NewGuid();
+            cache.Set(id, new HomeShelvesResult(), T0);
+
+            // Just inside the window → fresh; just past it → stale (served anyway).
+            cache.Get(id, T0 + HomeShelvesCache.FreshFor - TimeSpan.FromMinutes(1))!.Value.Stale
+                .Should().BeFalse();
+            cache.Get(id, T0 + HomeShelvesCache.FreshFor + TimeSpan.FromMinutes(1))!.Value.Stale
+                .Should().BeTrue();
         }
 
         [Fact]
@@ -34,25 +52,27 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
             var mine = new HomeShelvesResult();
             var userA = Guid.NewGuid();
 
-            cache.Set(userA, mine);
+            cache.Set(userA, mine, T0);
 
-            // A different user's id is still a miss — shelves never leak across users.
-            cache.Get(Guid.NewGuid()).Should().BeNull();
-            cache.Get(userA).Should().BeSameAs(mine);
+            cache.Get(Guid.NewGuid(), T0).Should().BeNull();
+            cache.Get(userA, T0)!.Value.Result.Should().BeSameAs(mine);
         }
 
         [Fact]
-        public void Set_OverwritesOnRecompute()
+        public void Set_OverwritesAndRefreshesTimestamp()
         {
             var cache = new HomeShelvesCache();
             var id = Guid.NewGuid();
-            var first = new HomeShelvesResult();
+            cache.Set(id, new HomeShelvesResult(), T0);
+
+            // A refresh past the window re-stamps freshness → no longer stale.
+            var later = T0 + HomeShelvesCache.FreshFor + TimeSpan.FromHours(1);
             var second = new HomeShelvesResult();
+            cache.Set(id, second, later);
 
-            cache.Set(id, first);
-            cache.Set(id, second);
-
-            cache.Get(id).Should().BeSameAs(second);
+            var hit = cache.Get(id, later);
+            hit!.Value.Result.Should().BeSameAs(second);
+            hit.Value.Stale.Should().BeFalse();
         }
     }
 }

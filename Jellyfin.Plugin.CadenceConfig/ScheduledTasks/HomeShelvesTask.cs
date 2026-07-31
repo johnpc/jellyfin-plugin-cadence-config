@@ -12,11 +12,13 @@ using Microsoft.Extensions.Logging;
 namespace Jellyfin.Plugin.CadenceConfig.ScheduledTasks
 {
     /// <summary>
-    /// Recomputes every user's Home shelves on a schedule and stores them in the shared
-    /// <see cref="HomeShelvesCache"/>, so GET /Cadence/Home serves them instantly. The client's Home
-    /// then loads in one fast call instead of ~6 slow recursive library scans. Runs every 15 minutes
-    /// by default; a brand-new like/follow surfaces on the fast path by the next run (the client
-    /// already reflects likes optimistically in the meantime).
+    /// DAILY pre-warm of every user's Home shelves into the shared <see cref="HomeShelvesCache"/>,
+    /// so GET /Cadence/Home serves them instantly and cold misses are rare. Between daily runs, an
+    /// active user's shelves are kept current by the controller's stale-while-revalidate background
+    /// refresh (HomeShelvesRefresher) on their own visits — so we DON'T need a tight interval
+    /// hammering all N users' recursive scans every few minutes. Daily is the safety-net warm-up;
+    /// per-user freshness is demand-driven. A brand-new like/follow surfaces within the freshness
+    /// window on the user's next visit (the client also reflects likes optimistically meanwhile).
     /// </summary>
     [ExcludeFromCodeCoverage]
     public sealed class HomeShelvesTask : IScheduledTask
@@ -66,7 +68,7 @@ namespace Jellyfin.Plugin.CadenceConfig.ScheduledTasks
                 new TaskTriggerInfo
                 {
                     Type = TaskTriggerInfoType.IntervalTrigger,
-                    IntervalTicks = TimeSpan.FromMinutes(15).Ticks,
+                    IntervalTicks = TimeSpan.FromHours(24).Ticks,
                 },
             };
         }
@@ -86,7 +88,7 @@ namespace Jellyfin.Plugin.CadenceConfig.ScheduledTasks
                 {
                     try
                     {
-                        _cache.Set(user.Id, _service.Build(user));
+                        _cache.Set(user.Id, _service.Build(user), DateTime.UtcNow);
                     }
                     catch (InvalidOperationException ex)
                     {
