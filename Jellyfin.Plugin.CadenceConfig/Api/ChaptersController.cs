@@ -12,9 +12,9 @@ namespace Jellyfin.Plugin.CadenceConfig.Api
 {
     /// <summary>
     /// Serves embedded audiobook chapters for a Jellyfin audio item — the piece Jellyfin's own item API
-    /// omits for audio files. Authenticated (any signed-in user). The extraction/mapping lives in the
-    /// unit-tested <see cref="ChapterMapper"/> + <see cref="ChapterService"/>; this controller is thin
-    /// plumbing.
+    /// omits for audio files. Authenticated (any signed-in user). The extraction lives in
+    /// <see cref="ChapterService"/> (ffprobe) + the unit-tested pure parser
+    /// <see cref="FfprobeChapters"/>; this controller is thin plumbing.
     /// </summary>
     [ApiController]
     [Authorize]

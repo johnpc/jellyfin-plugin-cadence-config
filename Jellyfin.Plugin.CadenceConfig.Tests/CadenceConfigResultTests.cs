@@ -70,5 +70,13 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
             // Deezer's public API needs no config, so the endpoint exists whenever the plugin does.
             CadenceConfigResult.FromConfiguration(new PluginConfiguration()).DeezerImport.Should().BeTrue();
         }
+
+        [Fact]
+        public void FromConfiguration_AudiobooksAlwaysAvailable()
+        {
+            // The plugin serving this response hosts GET /Cadence/Audiobooks, so the client can always
+            // take the fast cached path when the plugin is installed.
+            CadenceConfigResult.FromConfiguration(new PluginConfiguration()).Audiobooks.Should().BeTrue();
+        }
     }
 }

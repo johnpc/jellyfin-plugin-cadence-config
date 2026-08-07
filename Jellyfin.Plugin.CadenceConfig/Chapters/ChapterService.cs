@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.MediaEncoding;
-using MediaBrowser.Model.Dlna;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.CadenceConfig.Chapters
@@ -13,10 +13,11 @@ namespace Jellyfin.Plugin.CadenceConfig.Chapters
     /// <summary>
     /// Extracts embedded chapter markers from an audiobook's media file. Jellyfin recognises m4b files
     /// as audiobooks and probes their duration, but it does NOT surface the embedded chapter atoms on
-    /// its item API for audio. This service runs Jellyfin's OWN ffprobe wrapper
-    /// (<see cref="IMediaEncoder.GetMediaInfo"/>) with <c>ExtractChapters</c> enabled — the same probe
-    /// that already reads duration — and maps the result to the client shape via the pure
-    /// <see cref="ChapterMapper"/>. Results are cached per item id since a file's chapters never change.
+    /// its item API for audio — and <see cref="IMediaEncoder.GetMediaInfo"/> with <c>ExtractChapters</c>
+    /// returns none for audio too (verified on the live server: a 12-chapter m4b returned nothing). So
+    /// this service shells out to ffprobe DIRECTLY (Jellyfin's bundled binary at
+    /// <see cref="IMediaEncoder.ProbePath"/>) with <c>-show_chapters</c> and parses its JSON via the pure
+    /// <see cref="FfprobeChapters"/>. Results are cached per item id since a file's chapters never change.
     /// </summary>
     [ExcludeFromCodeCoverage]
     public sealed class ChapterService
@@ -30,7 +31,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Chapters
         /// Initializes a new instance of the <see cref="ChapterService"/> class.
         /// </summary>
         /// <param name="libraryManager">Jellyfin library manager (to resolve the item + its file).</param>
-        /// <param name="mediaEncoder">Jellyfin's ffprobe wrapper (to extract chapters).</param>
+        /// <param name="mediaEncoder">Jellyfin's media encoder (for the bundled ffprobe path).</param>
         /// <param name="logger">The logger.</param>
         public ChapterService(
             ILibraryManager libraryManager,
@@ -60,26 +61,16 @@ namespace Jellyfin.Plugin.CadenceConfig.Chapters
             }
 
             var item = _libraryManager.GetItemById(itemId);
-            var sources = item?.GetMediaSources(false);
-            if (item is null || sources is null || sources.Count == 0)
+            var path = item?.Path;
+            if (string.IsNullOrEmpty(path))
             {
                 return null;
             }
 
-            var source = sources[0];
-
             try
             {
-                var info = await _mediaEncoder.GetMediaInfo(
-                    new MediaInfoRequest
-                    {
-                        MediaSource = source,
-                        ExtractChapters = true,
-                        MediaType = DlnaProfileType.Audio,
-                    },
-                    cancellationToken).ConfigureAwait(false);
-
-                var chapters = ChapterMapper.ToClientChapters(info.Chapters);
+                var json = await RunProbeAsync(path, cancellationToken).ConfigureAwait(false);
+                var chapters = FfprobeChapters.Parse(json);
                 _cache[itemId] = chapters;
                 return chapters;
             }
@@ -90,6 +81,31 @@ namespace Jellyfin.Plugin.CadenceConfig.Chapters
                 _logger.LogWarning(ex, "Failed to extract chapters for item {ItemId}", itemId);
                 return new List<AudiobookChapter>();
             }
+        }
+
+        /// <summary>Run Jellyfin's bundled ffprobe with -show_chapters and return its stdout JSON.</summary>
+        private async Task<string> RunProbeAsync(string path, CancellationToken cancellationToken)
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = _mediaEncoder.ProbePath,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            psi.ArgumentList.Add("-v");
+            psi.ArgumentList.Add("error");
+            psi.ArgumentList.Add("-print_format");
+            psi.ArgumentList.Add("json");
+            psi.ArgumentList.Add("-show_chapters");
+            psi.ArgumentList.Add(path);
+
+            using var process = new Process { StartInfo = psi };
+            process.Start();
+            var stdout = await process.StandardOutput.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+            return stdout;
         }
     }
 }

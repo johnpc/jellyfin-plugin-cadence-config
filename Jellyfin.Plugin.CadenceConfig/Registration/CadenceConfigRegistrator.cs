@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
+using Jellyfin.Plugin.CadenceConfig.Audiobooks;
 using Jellyfin.Plugin.CadenceConfig.Chapters;
 using Jellyfin.Plugin.CadenceConfig.Covers;
 using Jellyfin.Plugin.CadenceConfig.Deezer;
@@ -7,6 +8,7 @@ using Jellyfin.Plugin.CadenceConfig.Sync;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Jellyfin.Plugin.CadenceConfig.Registration
 {
@@ -34,6 +36,12 @@ namespace Jellyfin.Plugin.CadenceConfig.Registration
 
             // Extracts embedded audiobook (m4b) chapters Jellyfin doesn't surface for audio.
             serviceCollection.AddSingleton<ChapterService>();
+
+            // Caches the whole audiobook library as client-ready DTOs so the Cadence client fetches it
+            // in one fast call (no per-request recursive scan). The hosted invalidator drops the cache
+            // on library changes; the refresh scheduled task warms it on startup + daily.
+            serviceCollection.AddSingleton<AudiobookLibraryService>();
+            serviceCollection.AddHostedService<AudiobookLibraryInvalidator>();
 
             // Generates mosaic/name covers for art-less playlists (PlaylistCoverTask runs it).
             serviceCollection.AddSingleton<PlaylistCoverService>();
