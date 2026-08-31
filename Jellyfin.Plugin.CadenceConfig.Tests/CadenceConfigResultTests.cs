@@ -86,5 +86,32 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
             // always take the fast one-call path (and falls back to the native scan when false).
             CadenceConfigResult.FromConfiguration(new PluginConfiguration()).Audiobooks.Should().BeTrue();
         }
+
+        [Fact]
+        public void FromConfiguration_HandsClientsTheMusicGrabberCredentials()
+        {
+            // Deliberate: the grabber key is CLIENT-grade (the web app ships it in its public
+            // bundle), so serving it to authenticated users is strictly tighter than the status quo
+            // and spares every device hand-configuring Settings. The Lidarr key stays server-side.
+            var config = new PluginConfiguration
+            {
+                MusicGrabberUrl = "https://musicgrabber.example.com",
+                MusicGrabberApiKey = "client-grade-key",
+            };
+
+            var result = CadenceConfigResult.FromConfiguration(config);
+
+            result.MusicGrabberUrl.Should().Be("https://musicgrabber.example.com");
+            result.MusicGrabberApiKey.Should().Be("client-grade-key");
+        }
+
+        [Fact]
+        public void FromConfiguration_MusicGrabberDefaultsEmpty()
+        {
+            var result = CadenceConfigResult.FromConfiguration(new PluginConfiguration());
+
+            result.MusicGrabberUrl.Should().BeEmpty();
+            result.MusicGrabberApiKey.Should().BeEmpty();
+        }
     }
 }

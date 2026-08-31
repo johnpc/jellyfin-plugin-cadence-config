@@ -56,6 +56,20 @@ namespace Jellyfin.Plugin.CadenceConfig.Config
         public bool Audiobooks { get; set; }
 
         /// <summary>
+        /// Gets or sets the Music Grabber base URL (empty when unset), so clients can offer the
+        /// "grab a track" flow with zero per-device setup.
+        /// </summary>
+        public string MusicGrabberUrl { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the Music Grabber API key for the client's direct grab calls. This is a
+        /// CLIENT-grade credential by design — the Cadence web app has always shipped it in its
+        /// public JS bundle — so serving it here, to authenticated Jellyfin users only, is strictly
+        /// tighter than the status quo (unlike the Lidarr key, which stays server-side).
+        /// </summary>
+        public string MusicGrabberApiKey { get; set; } = string.Empty;
+
+        /// <summary>
         /// Builds the client-facing config from the plugin configuration, deliberately omitting the
         /// Lidarr API key and only surfacing a boolean for whether the proxy is usable.
         /// </summary>
@@ -73,6 +87,8 @@ namespace Jellyfin.Plugin.CadenceConfig.Config
                 DeezerImport = true, // plugin serving this response IS the import endpoint's host
                 HomeShelves = true, // plugin serving this response IS the Home-shelves endpoint's host
                 Audiobooks = true, // plugin serving this response IS the audiobooks endpoint's host
+                MusicGrabberUrl = config.MusicGrabberUrl ?? string.Empty,
+                MusicGrabberApiKey = config.MusicGrabberApiKey ?? string.Empty,
             };
         }
     }
