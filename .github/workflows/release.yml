@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - "manifest.json"
+      - "**.md"
 
 permissions:
   contents: write
@@ -99,49 +102,23 @@ jobs:
         CHECKSUM=$(md5sum jellyfin-plugin-cadence-config-${VERSION}.zip | awk '{ print $1 }')
         echo "CHECKSUM=$CHECKSUM" >> $GITHUB_OUTPUT
 
-    - name: Generate manifest.json (accumulating all versions)
+    # Git is the source of truth for the accumulated version history: the new
+    # entry is prepended to the manifest.json already in this checkout. The
+    # previous manifest is never fetched over the network.
+    - name: Update manifest.json (accumulating all versions)
       run: |
-        VERSION=${{ steps.get_version.outputs.VERSION }}
-        CHECKSUM=${{ steps.calculate_checksum.outputs.CHECKSUM }}
-        TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        # New version entry.
-        cat > new-version.json << EOF
-        {
-          "version": "${VERSION}",
-          "changelog": "See the full changelog at [GitHub](https://github.com/johnpc/jellyfin-plugin-cadence-config/releases/tag/${VERSION})",
-          "targetAbi": "12.0.0.0",
-          "sourceUrl": "https://github.com/johnpc/jellyfin-plugin-cadence-config/releases/download/${VERSION}/jellyfin-plugin-cadence-config-${VERSION}.zip",
-          "checksum": "${CHECKSUM}",
-          "timestamp": "${TIMESTAMP}"
-        }
-        EOF
-        # Fetch the previous release's manifest so versions accumulate (Jellyfin needs
-        # the full version list to offer upgrades). First release → empty list.
-        PREV_URL="https://github.com/johnpc/jellyfin-plugin-cadence-config/releases/latest/download/manifest.json"
-        curl -fsSL "$PREV_URL" -o prev-manifest.json || echo '[]' > prev-manifest.json
-        # Prepend the new version to the existing versions array (dedupe by version).
-        python3 - << 'PY'
-        import json
-        with open("prev-manifest.json") as f:
-            prev = json.load(f)
-        with open("new-version.json") as f:
-            new_ver = json.load(f)
-        entry = prev[0] if prev else {
-            "guid": "7d49437c-2e97-430f-b6b7-fa9d58110448",
-            "name": "CadenceConfig",
-            "overview": "Serves the Cadence music client its runtime config and proxies Lidarr requests server-side.",
-            "description": "CadenceConfig lets a Jellyfin server operator set the Cadence client's runtime config (marlin search URL, sign-up URL, cast receiver id) once in the plugin dashboard so every client — web and native iOS — is auto-configured at sign-in. It also proxies the client's 'request missing music' calls to Lidarr through a curated allowlist, injecting the Lidarr API key server-side so the write credential never reaches a client.",
-            "owner": "johnpc",
-            "category": "General",
-            "versions": [],
-        }
-        versions = [v for v in entry.get("versions", []) if v["version"] != new_ver["version"]]
-        entry["versions"] = [new_ver] + versions
-        with open("manifest.json", "w") as f:
-            json.dump([entry], f, indent=2)
-        PY
-        echo "Manifest now lists:" && python3 -c 'import json;print([v["version"] for v in json.load(open("manifest.json"))[0]["versions"]])'
+        python3 scripts/update-manifest.py \
+          --version ${{ steps.get_version.outputs.VERSION }} \
+          --checksum ${{ steps.calculate_checksum.outputs.CHECKSUM }}
 
+    - name: Validate manifest.json
+      run: |
+        python3 scripts/validate-manifest.py \
+          --new-version ${{ steps.get_version.outputs.VERSION }} \
+          --zip jellyfin-plugin-cadence-config-${{ steps.get_version.outputs.VERSION }}.zip
+
+    # manifest.json is still attached to the release for back-compat; the
+    # canonical copy is the one committed to main.
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
@@ -151,10 +128,25 @@ jobs:
           manifest.json
         generate_release_notes: true
 
+    - name: Verify published asset matches manifest checksum
+      run: |
+        SOURCE_URL=$(python3 -c 'import json; v = json.load(open("manifest.json"))[0]["versions"][0]; print(v["sourceUrl"])')
+        EXPECTED=$(python3 -c 'import json; v = json.load(open("manifest.json"))[0]["versions"][0]; print(v["checksum"])')
+        curl -fsSL --retry 10 --retry-delay 5 --retry-all-errors "$SOURCE_URL" -o published.zip
+        ACTUAL=$(md5sum published.zip | awk '{ print $1 }')
+        echo "expected: $EXPECTED"
+        echo "actual:   $ACTUAL"
+        if [ "$EXPECTED" != "$ACTUAL" ]; then
+          echo "::error::Published asset md5 does not match the manifest entry"
+          exit 1
+        fi
+
+    # Pushed with the default GITHUB_TOKEN as github-actions[bot]; such pushes
+    # do not retrigger workflows (and paths-ignore covers manifest.json anyway).
     - name: Commit manifest to main
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         git add manifest.json
-        git diff --cached --quiet || git commit -m "chore: update manifest for ${{ steps.get_version.outputs.VERSION }}"
+        git diff --cached --quiet || git commit -m "chore: record ${{ steps.get_version.outputs.VERSION }} in plugin manifest"
         git push origin HEAD:main
