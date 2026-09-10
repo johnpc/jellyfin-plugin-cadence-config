@@ -212,7 +212,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Sync
             }
 
             var itemGuids = additions.Select(id => Guid.ParseExact(id, "N")).ToArray();
-            await _playlistManager.AddItemToPlaylistAsync(playlistGuid, itemGuids, userId).ConfigureAwait(false);
+            await _playlistManager.AddItemToPlaylistAsync(playlistGuid, itemGuids, position: null, userId).ConfigureAwait(false);
             return additions.Count;
         }
 

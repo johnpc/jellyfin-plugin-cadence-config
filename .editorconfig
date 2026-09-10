@@ -46,6 +46,10 @@ dotnet_naming_style.pascal_case_style.capitalization = pascal_case
 
 # Code quality
 dotnet_diagnostic.CA1848.severity = suggestion
+# CA1873 (new in .NET 10): flags boxing/property-access log args as "potentially expensive".
+# Same rationale as CA1848 above — this plugin's logs are once-per-task-run summaries with
+# int/count args; LoggerMessage delegates or IsEnabled guards add noise for no measurable win.
+dotnet_diagnostic.CA1873.severity = suggestion
 dotnet_diagnostic.CA1062.severity = suggestion
 dotnet_diagnostic.CA1002.severity = suggestion
 dotnet_diagnostic.CA1724.severity = none
