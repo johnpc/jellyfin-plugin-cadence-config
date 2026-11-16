@@ -4,6 +4,17 @@ Configure the [Cadence](https://github.com/johnpc/cadence) music client for **ev
 Jellyfin server, from one place — the plugin dashboard. No one has to type URLs into Settings on
 their phone, and no secret ever leaves the server.
 
+## Scope
+
+This plugin is an **extensions backend**, not a cache. Earlier versions precomputed Home shelves
+(`/Cadence/Home`), the audiobook library (`/Cadence/Audiobooks`), and m4b chapters; those are gone
+because native Jellyfin 12 queries are now fast enough (0.1–0.9 s cold on a 31k-song library) and
+Jellyfin 12 exposes audiobook chapters natively. The plugin now only provides deployment config
+(`/Cadence/Config`) and server-side extensions Jellyfin lacks: the Lidarr request proxy, Deezer
+playlist import/sync (with Music Grabber fulfillment), and generated playlist covers.
+`/Cadence/Config` still reports `HomeShelves: false` and `Audiobooks: false` so older Cadence
+clients stay on their native paths.
+
 ## What it does
 
 Cadence is a Spotify-like client for a self-hosted Jellyfin server. Some of its features depend on

@@ -17,4 +17,6 @@ owner: "johnpc"
 artifacts:
   - "Jellyfin.Plugin.CadenceConfig.dll"
 changelog: >
-  Initial release
+  Extensions backend only: removed the precomputed Home-shelves, audiobook-library, and chapter
+  endpoints (native Jellyfin 12 queries are fast enough). /Cadence/Config reports HomeShelves and
+  Audiobooks as false so older clients use their native paths.

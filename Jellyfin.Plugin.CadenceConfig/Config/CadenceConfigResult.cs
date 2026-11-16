@@ -40,20 +40,20 @@ namespace Jellyfin.Plugin.CadenceConfig.Config
         public bool DeezerImport { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether the precomputed Home-shelves endpoint
-        /// (GET /Cadence/Home) is available. Always true when this plugin is installed — the endpoint
-        /// is always served — so the client takes the fast one-call Home path instead of ~6 slow
-        /// per-shelf library scans, and falls back to native queries when this is false.
+        /// Gets a value indicating whether the retired precomputed Home-shelves endpoint
+        /// (GET /Cadence/Home) is available. ALWAYS false: the endpoint was removed because native
+        /// Jellyfin 12 queries are fast enough. Kept on the wire as an explicit <c>false</c> so
+        /// Cadence clients already in the wild (which only take the plugin path on an explicit
+        /// <c>true</c>) stay on their native Home path and never call the missing endpoint.
         /// </summary>
-        public bool HomeShelves { get; set; }
+        public bool HomeShelves => false;
 
         /// <summary>
-        /// Gets or sets a value indicating whether the precomputed audiobook-library endpoint
-        /// (GET /Cadence/Audiobooks) is available. Always true when this plugin is installed — the
-        /// endpoint is always served — so the client takes the fast one-call path instead of a slow
-        /// recursive AudioBook scan, and falls back to the native scan when this is false.
+        /// Gets a value indicating whether the retired precomputed audiobook-library endpoint
+        /// (GET /Cadence/Audiobooks) is available. ALWAYS false for the same reason as
+        /// <see cref="HomeShelves"/>: old clients keep using the native AudioBook query.
         /// </summary>
-        public bool Audiobooks { get; set; }
+        public bool Audiobooks => false;
 
         /// <summary>
         /// Gets or sets the Music Grabber base URL (empty when unset), so clients can offer the
@@ -85,8 +85,6 @@ namespace Jellyfin.Plugin.CadenceConfig.Config
                 LidarrProxy = !string.IsNullOrWhiteSpace(config.LidarrUrl)
                     && !string.IsNullOrWhiteSpace(config.LidarrApiKey),
                 DeezerImport = true, // plugin serving this response IS the import endpoint's host
-                HomeShelves = true, // plugin serving this response IS the Home-shelves endpoint's host
-                Audiobooks = true, // plugin serving this response IS the audiobooks endpoint's host
                 MusicGrabberUrl = config.MusicGrabberUrl ?? string.Empty,
                 MusicGrabberApiKey = config.MusicGrabberApiKey ?? string.Empty,
             };

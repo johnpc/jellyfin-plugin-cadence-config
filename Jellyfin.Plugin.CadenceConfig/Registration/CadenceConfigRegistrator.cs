@@ -1,11 +1,8 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
-using Jellyfin.Plugin.CadenceConfig.Audiobooks;
-using Jellyfin.Plugin.CadenceConfig.Chapters;
 using Jellyfin.Plugin.CadenceConfig.Covers;
 using Jellyfin.Plugin.CadenceConfig.Deezer;
 using Jellyfin.Plugin.CadenceConfig.Grab;
-using Jellyfin.Plugin.CadenceConfig.Home;
 using Jellyfin.Plugin.CadenceConfig.Sync;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
@@ -35,9 +32,6 @@ namespace Jellyfin.Plugin.CadenceConfig.Registration
             // Shared by the import controller (one-shot) and the sync scheduled task (recurring).
             serviceCollection.AddSingleton<DeezerImportService>();
 
-            // Extracts embedded audiobook (m4b) chapters Jellyfin doesn't surface for audio.
-            serviceCollection.AddSingleton<ChapterService>();
-
             // Generates mosaic/name covers for art-less playlists (PlaylistCoverTask runs it).
             serviceCollection.AddSingleton<PlaylistCoverService>();
 
@@ -45,20 +39,6 @@ namespace Jellyfin.Plugin.CadenceConfig.Registration
             // + files them from the metadata we pass, so no tagging is needed on our side).
             serviceCollection.AddSingleton<MusicGrabberClient>();
             serviceCollection.AddSingleton<GrabFulfillmentService>();
-
-            // Precomputed Home shelves: the cache is shared between the daily task, the controller
-            // (reader), and the refresher (background writer). The refresher rebuilds off the request
-            // thread (stale-while-revalidate) so no user ever waits on a recursive-scan compute.
-            serviceCollection.AddSingleton<HomeShelvesCache>();
-            serviceCollection.AddSingleton<IHomeShelvesService, HomeShelvesService>();
-            serviceCollection.AddSingleton<HomeShelvesRefresher>();
-
-            // Precomputed audiobook library: same stale-while-revalidate pattern as Home. The cache
-            // is shared between the daily task, the controller (reader), and the refresher (background
-            // writer), so the client skips the slow recursive AudioBook scan on the Audiobooks tab.
-            serviceCollection.AddSingleton<AudiobooksCache>();
-            serviceCollection.AddSingleton<IAudiobooksService, AudiobooksService>();
-            serviceCollection.AddSingleton<AudiobooksRefresher>();
         }
     }
 }

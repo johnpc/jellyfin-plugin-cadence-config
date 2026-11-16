@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentAssertions;
 using Jellyfin.Plugin.CadenceConfig.Config;
 using Jellyfin.Plugin.CadenceConfig.Configuration;
@@ -72,19 +73,33 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
         }
 
         [Fact]
-        public void FromConfiguration_HomeShelvesAlwaysAvailable()
+        public void FromConfiguration_ReportsRetiredHomeAndAudiobooksEndpointsOff()
         {
-            // The Home-shelves endpoint is served whenever the plugin is installed, so the client
-            // can always take the fast one-call Home path (and falls back to native when false).
-            CadenceConfigResult.FromConfiguration(new PluginConfiguration()).HomeShelves.Should().BeTrue();
+            // GET /Cadence/Home and GET /Cadence/Audiobooks were removed. Clients in the wild only
+            // take those plugin paths on an explicit true, so both flags must read false.
+            var result = CadenceConfigResult.FromConfiguration(new PluginConfiguration
+            {
+                LidarrUrl = "http://localhost:8686",
+                LidarrApiKey = "key",
+                MusicGrabberUrl = "https://musicgrabber.example.com",
+                MusicGrabberApiKey = "key",
+            });
+
+            result.HomeShelves.Should().BeFalse();
+            result.Audiobooks.Should().BeFalse();
         }
 
         [Fact]
-        public void FromConfiguration_AudiobooksAlwaysAvailable()
+        public void ConfigResponse_SerializesRetiredFlagsAsExplicitFalse()
         {
-            // The audiobooks endpoint is served whenever the plugin is installed, so the client can
-            // always take the fast one-call path (and falls back to the native scan when false).
-            CadenceConfigResult.FromConfiguration(new PluginConfiguration()).Audiobooks.Should().BeTrue();
+            // Old iOS decodes a missing key as false and the old web app treats anything but true
+            // as off — emitting an explicit false satisfies both, on the real JSON wire shape.
+            var json = JsonSerializer.Serialize(CadenceConfigResult.FromConfiguration(new PluginConfiguration()));
+
+            using var doc = JsonDocument.Parse(json);
+            doc.RootElement.GetProperty("HomeShelves").GetBoolean().Should().BeFalse();
+            doc.RootElement.GetProperty("Audiobooks").GetBoolean().Should().BeFalse();
+            doc.RootElement.GetProperty("DeezerImport").GetBoolean().Should().BeTrue();
         }
 
         [Fact]
