@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.CadenceConfig.Deezer;
 using Jellyfin.Plugin.CadenceConfig.Sync;
+using MediaBrowser.Controller.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -25,33 +26,44 @@ namespace Jellyfin.Plugin.CadenceConfig.Api
     public class DeezerImportController : ControllerBase
     {
         private readonly DeezerImportService _importService;
+        private readonly IAuthorizationContext _authContext;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DeezerImportController"/> class.
         /// </summary>
         /// <param name="importService">The shared Deezer import/sync engine.</param>
-        public DeezerImportController(DeezerImportService importService)
+        /// <param name="authContext">Resolves the caller from the request's token.</param>
+        public DeezerImportController(DeezerImportService importService, IAuthorizationContext authContext)
         {
             _importService = importService;
+            _authContext = authContext;
         }
 
         /// <summary>
         /// Imports (and subscribes) a public Deezer playlist for the given user.
         /// </summary>
-        /// <param name="userId">The calling user's Jellyfin id (playlist owner + library scope).</param>
+        /// <param name="userId">The calling user's Jellyfin id (playlist owner + library scope). Must be
+        /// the caller's own id (or omitted); another user's id is refused with 403.</param>
         /// <param name="url">A Deezer playlist share URL or bare id.</param>
         /// <param name="isPublic">When true, mark the playlist public so it appears in the shared/community view.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The created/updated playlist + missing artists, or an error status.</returns>
         [HttpPost("Import")]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<DeezerImportResult>> Import(
             [FromQuery] Guid userId,
             [FromQuery] string? url,
             [FromQuery] bool isPublic,
             CancellationToken cancellationToken)
         {
-            var result = await _importService.ImportAsync(userId, url, isPublic, cancellationToken).ConfigureAwait(false);
+            var acting = await ActingUserAsync(userId).ConfigureAwait(false);
+            if (acting == null)
+            {
+                return Forbid();
+            }
+
+            var result = await _importService.ImportAsync(acting.Value, url, isPublic, cancellationToken).ConfigureAwait(false);
             if (result == null)
             {
                 return BadRequest("Could not read that Deezer playlist (private, not found, or bad URL).");
@@ -65,20 +77,28 @@ namespace Jellyfin.Plugin.CadenceConfig.Api
         /// the user's library so an artist Lidarr has filled in since import is already gone. Lets the
         /// client show a persistent "request these" list on the playlist page across sessions.
         /// </summary>
-        /// <param name="userId">The calling user's Jellyfin id (must own the subscription).</param>
+        /// <param name="userId">The calling user's Jellyfin id (must own the subscription). Must be the
+        /// caller's own id (or omitted); another user's id is refused with 403.</param>
         /// <param name="playlistId">The Jellyfin playlist id shown on the client.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The subscription status, or 404 when the playlist isn't a Deezer subscription.</returns>
         [HttpGet("Subscription")]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<DeezerSubscriptionStatus>> Subscription(
             [FromQuery] Guid userId,
             [FromQuery] string? playlistId,
             CancellationToken cancellationToken)
         {
+            var acting = await ActingUserAsync(userId).ConfigureAwait(false);
+            if (acting == null)
+            {
+                return Forbid();
+            }
+
             var status = await _importService
-                .GetMissingArtistsAsync(userId, playlistId ?? string.Empty, cancellationToken)
+                .GetMissingArtistsAsync(acting.Value, playlistId ?? string.Empty, cancellationToken)
                 .ConfigureAwait(false);
             if (status == null)
             {
@@ -86,6 +106,16 @@ namespace Jellyfin.Plugin.CadenceConfig.Api
             }
 
             return status;
+        }
+
+        /// <summary>
+        /// The user this request may act for: the verified caller, and a <c>userId</c> parameter
+        /// only when it names them (<see cref="CallerScope"/>). Null means refuse.
+        /// </summary>
+        private async Task<Guid?> ActingUserAsync(Guid requested)
+        {
+            var info = await _authContext.GetAuthorizationInfo(Request).ConfigureAwait(false);
+            return CallerScope.Resolve(info.UserId, requested);
         }
     }
 }
