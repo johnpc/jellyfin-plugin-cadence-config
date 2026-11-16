@@ -16,7 +16,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Sync
     /// each file stays within the line limit; the mapping itself is straight library plumbing.
     /// </summary>
     // Excluded from coverage: thin ILibraryManager query plumbing (enumerate audio → key map),
-    // like HomeShelvesService/ChapterService. The matching LOGIC (TrackKey) is separately tested.
+    // like the other library-query helpers. The matching LOGIC (TrackKey) is separately tested.
     [ExcludeFromCodeCoverage]
     public static class LibraryIndex
     {
