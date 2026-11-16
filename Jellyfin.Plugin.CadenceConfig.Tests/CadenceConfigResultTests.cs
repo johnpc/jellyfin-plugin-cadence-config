@@ -103,21 +103,26 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
         }
 
         [Fact]
-        public void FromConfiguration_HandsClientsTheMusicGrabberCredentials()
+        public void ConfigResponse_NeverCarriesAnApiKey()
         {
-            // Deliberate: the grabber key is CLIENT-grade (the web app ships it in its public
-            // bundle), so serving it to authenticated users is strictly tighter than the status quo
-            // and spares every device hand-configuring Settings. The Lidarr key stays server-side.
+            // Every signed-in user can read /Cadence/Config, so no credential may ride in it: the
+            // Music Grabber key used to, which let any user drive the grabber directly.
             var config = new PluginConfiguration
             {
+                LidarrUrl = "http://localhost:8686",
+                LidarrApiKey = "lidarr-secret-key",
                 MusicGrabberUrl = "https://musicgrabber.example.com",
-                MusicGrabberApiKey = "client-grade-key",
+                MusicGrabberApiKey = "grabber-secret-key",
             };
 
-            var result = CadenceConfigResult.FromConfiguration(config);
+            var json = JsonSerializer.Serialize(CadenceConfigResult.FromConfiguration(config));
 
-            result.MusicGrabberUrl.Should().Be("https://musicgrabber.example.com");
-            result.MusicGrabberApiKey.Should().Be("client-grade-key");
+            json.Should().NotContain("lidarr-secret-key");
+            json.Should().NotContain("grabber-secret-key");
+            json.Should().NotContainEquivalentOf("ApiKey");
+            using var doc = JsonDocument.Parse(json);
+            doc.RootElement.GetProperty("MusicGrabberUrl").GetString().Should().Be("https://musicgrabber.example.com");
+            doc.RootElement.GetProperty("LidarrProxy").GetBoolean().Should().BeTrue();
         }
 
         [Fact]
@@ -126,7 +131,6 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
             var result = CadenceConfigResult.FromConfiguration(new PluginConfiguration());
 
             result.MusicGrabberUrl.Should().BeEmpty();
-            result.MusicGrabberApiKey.Should().BeEmpty();
         }
     }
 }

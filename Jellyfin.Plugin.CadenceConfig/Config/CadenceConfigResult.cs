@@ -4,8 +4,9 @@ namespace Jellyfin.Plugin.CadenceConfig.Config
 {
     /// <summary>
     /// The runtime config the Cadence client fetches at sign-in and merges into its
-    /// <c>window.__CADENCE_CONFIG__</c>. Non-secret values only — the Lidarr API key is NEVER
-    /// included; instead <see cref="LidarrProxy"/> tells the client the proxy endpoint is available.
+    /// <c>window.__CADENCE_CONFIG__</c>. Non-secret values only: no API key is EVER included (not
+    /// Lidarr's, not Music Grabber's) — every signed-in Jellyfin user can read this response.
+    /// <see cref="LidarrProxy"/> tells the client the proxy endpoint is available instead.
     /// </summary>
     public class CadenceConfigResult
     {
@@ -56,22 +57,15 @@ namespace Jellyfin.Plugin.CadenceConfig.Config
         public bool Audiobooks => false;
 
         /// <summary>
-        /// Gets or sets the Music Grabber base URL (empty when unset), so clients can offer the
-        /// "grab a track" flow with zero per-device setup.
+        /// Gets or sets the Music Grabber base URL (empty when unset). The URL only — its API key
+        /// stays server-side (it is used by the Deezer import's grab fulfillment), because handing it
+        /// to every signed-in user let any of them drive the grabber directly.
         /// </summary>
         public string MusicGrabberUrl { get; set; } = string.Empty;
 
         /// <summary>
-        /// Gets or sets the Music Grabber API key for the client's direct grab calls. This is a
-        /// CLIENT-grade credential by design — the Cadence web app has always shipped it in its
-        /// public JS bundle — so serving it here, to authenticated Jellyfin users only, is strictly
-        /// tighter than the status quo (unlike the Lidarr key, which stays server-side).
-        /// </summary>
-        public string MusicGrabberApiKey { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Builds the client-facing config from the plugin configuration, deliberately omitting the
-        /// Lidarr API key and only surfacing a boolean for whether the proxy is usable.
+        /// Builds the client-facing config from the plugin configuration, deliberately omitting every
+        /// API key and only surfacing a boolean for whether the Lidarr proxy is usable.
         /// </summary>
         /// <param name="config">The plugin configuration.</param>
         /// <returns>The non-secret config for the client.</returns>
@@ -86,7 +80,6 @@ namespace Jellyfin.Plugin.CadenceConfig.Config
                     && !string.IsNullOrWhiteSpace(config.LidarrApiKey),
                 DeezerImport = true, // plugin serving this response IS the import endpoint's host
                 MusicGrabberUrl = config.MusicGrabberUrl ?? string.Empty,
-                MusicGrabberApiKey = config.MusicGrabberApiKey ?? string.Empty,
             };
         }
     }
