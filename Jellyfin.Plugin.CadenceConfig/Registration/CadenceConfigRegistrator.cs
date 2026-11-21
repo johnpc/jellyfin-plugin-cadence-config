@@ -3,16 +3,19 @@ using System.Diagnostics.CodeAnalysis;
 using Jellyfin.Plugin.CadenceConfig.Covers;
 using Jellyfin.Plugin.CadenceConfig.Deezer;
 using Jellyfin.Plugin.CadenceConfig.Grab;
+using Jellyfin.Plugin.CadenceConfig.Storyteller;
 using Jellyfin.Plugin.CadenceConfig.Sync;
+using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Jellyfin.Plugin.CadenceConfig.Registration
 {
     /// <summary>
     /// Registers CadenceConfig services into Jellyfin's DI container at startup — the named HTTP
-    /// client the Lidarr proxy uses to reach Lidarr.
+    /// client the Lidarr proxy uses to reach Lidarr, the Deezer/grab services, and the Storyteller bridge.
     /// </summary>
     [ExcludeFromCodeCoverage]
     public sealed class CadenceConfigRegistrator : IPluginServiceRegistrator
@@ -39,6 +42,19 @@ namespace Jellyfin.Plugin.CadenceConfig.Registration
             // + files them from the metadata we pass, so no tagging is needed on our side).
             serviceCollection.AddSingleton<MusicGrabberClient>();
             serviceCollection.AddSingleton<GrabFulfillmentService>();
+
+            // Storyteller (Whispersync + read-along): the API client, the per-user book catalog, the
+            // timeline builder with its on-disk cache, Jellyfin plumbing, and the two bridge halves —
+            // PositionBridge pushes saved positions as they happen; StorytellerSyncTask pulls on a timer.
+            serviceCollection.AddSingleton<StorytellerClient>();
+            serviceCollection.AddSingleton<BookCatalog>();
+            serviceCollection.AddSingleton(sp => new TimelineCache(
+                System.IO.Path.Combine(sp.GetRequiredService<IApplicationPaths>().CachePath, "cadence-storyteller")));
+            serviceCollection.AddSingleton<TimelineBuilder>();
+            serviceCollection.AddSingleton<JellyfinBooks>();
+            serviceCollection.AddSingleton<ReadAlongService>();
+            serviceCollection.AddSingleton<PositionService>();
+            serviceCollection.AddSingleton<IHostedService, PositionBridge>();
         }
     }
 }

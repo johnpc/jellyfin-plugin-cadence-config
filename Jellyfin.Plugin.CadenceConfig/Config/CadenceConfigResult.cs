@@ -64,6 +64,13 @@ namespace Jellyfin.Plugin.CadenceConfig.Config
         public string MusicGrabberUrl { get; set; } = string.Empty;
 
         /// <summary>
+        /// Gets or sets a value indicating whether the Storyteller bridge is configured (a Storyteller
+        /// URL is set). The client then shows "Connect Storyteller" in Settings and "Read along" for
+        /// audiobooks; whether THIS user is linked is a separate, caller-scoped call.
+        /// </summary>
+        public bool Storyteller { get; set; }
+
+        /// <summary>
         /// Builds the client-facing config from the plugin configuration, deliberately omitting every
         /// API key and only surfacing a boolean for whether the Lidarr proxy is usable.
         /// </summary>
@@ -80,6 +87,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Config
                     && !string.IsNullOrWhiteSpace(config.LidarrApiKey),
                 DeezerImport = true, // plugin serving this response IS the import endpoint's host
                 MusicGrabberUrl = config.MusicGrabberUrl ?? string.Empty,
+                Storyteller = !string.IsNullOrWhiteSpace(config.StorytellerUrl),
             };
         }
     }
