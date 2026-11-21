@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
-using MediaBrowser.Controller.Entities.Audio;
+using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -56,7 +56,9 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
 
         private void OnUserDataSaved(object? sender, UserDataSaveEventArgs e)
         {
-            if (e.Item is not Audio audio || e.UserData == null || string.IsNullOrWhiteSpace(Plugin.GetConfiguration().StorytellerUrl))
+            // Only audiobooks: music tracks are Audio too, and resolving every song save against the
+            // Storyteller catalog would be pointless work on every play.
+            if (e.Item is not AudioBook audio || e.UserData == null || string.IsNullOrWhiteSpace(Plugin.GetConfiguration().StorytellerUrl))
             {
                 return;
             }

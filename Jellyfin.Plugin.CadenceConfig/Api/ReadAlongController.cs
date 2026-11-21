@@ -77,16 +77,28 @@ namespace Jellyfin.Plugin.CadenceConfig.Api
                 return StatusCode((int)upstream.StatusCode);
             }
 
+            // Copy status, type and range headers through verbatim — a 206 must stay a 206, and
+            // FileStreamResult would rewrite the status, so the body is streamed by hand.
             Response.StatusCode = (int)upstream.StatusCode;
+            Response.ContentType = upstream.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
             if (upstream.Content.Headers.ContentRange != null)
             {
                 Response.Headers.ContentRange = upstream.Content.Headers.ContentRange.ToString();
             }
 
+            if (upstream.Content.Headers.ContentLength is long length)
+            {
+                Response.ContentLength = length;
+            }
+
             Response.Headers.AcceptRanges = "bytes";
-            var stream = await upstream.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-            HttpContext.Response.RegisterForDispose(upstream);
-            return File(stream, upstream.Content.Headers.ContentType?.ToString() ?? "application/octet-stream", enableRangeProcessing: false);
+            using (upstream)
+            {
+                var stream = await upstream.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+                await stream.CopyToAsync(Response.Body, cancellationToken).ConfigureAwait(false);
+            }
+
+            return new EmptyResult();
         }
 
         /// <summary>The newer of Storyteller's and Jellyfin's position for the book.</summary>
