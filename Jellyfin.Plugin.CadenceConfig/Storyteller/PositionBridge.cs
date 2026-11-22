@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,6 +25,8 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
         private readonly PositionService _positions;
         private readonly ILogger<PositionBridge> _logger;
         private readonly PushThrottle _throttle = new();
+        private readonly ConcurrentDictionary<string, Pending> _pending = new();
+        private readonly ConcurrentDictionary<string, byte> _timers = new();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PositionBridge"/> class.
@@ -70,13 +73,47 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
             }
 
             var bookKey = string.IsNullOrWhiteSpace(audio.Album) ? itemId : audio.Album;
-            if (_throttle.Decide(e.UserId, bookKey, e.SaveReason, DateTimeOffset.UtcNow) != PushDecision.Push)
+            var now = DateTimeOffset.UtcNow;
+            var pending = new Pending(e.UserId, audio.Id, itemId, PartsTimeline.TicksToSeconds(e.UserData.PlaybackPositionTicks));
+            switch (_throttle.Decide(e.UserId, bookKey, e.SaveReason, e.UserData.PlaybackPositionTicks, now))
+            {
+                case PushDecision.Push:
+                    _ = PushAsync(pending);
+                    break;
+                case PushDecision.Throttled:
+                    Defer(bookKey, pending, _throttle.RetryAfter(e.UserId, bookKey, now));
+                    break;
+            }
+        }
+
+        /// <summary>Keeps the newest throttled position and sends it once the window ends (one timer per book).</summary>
+        private void Defer(string bookKey, Pending pending, TimeSpan after)
+        {
+            var key = $"{pending.UserId:N}|{bookKey}";
+            _pending[key] = pending;
+            if (!_timers.TryAdd(key, 1))
             {
                 return;
             }
 
-            var seconds = PartsTimeline.TicksToSeconds(e.UserData.PlaybackPositionTicks);
-            _ = PushAsync(e.UserId, audio.Id, itemId, seconds);
+            _ = Task.Delay(after).ContinueWith(
+                done =>
+                {
+                    _timers.TryRemove(key, out _);
+                    if (_pending.TryRemove(key, out var latest))
+                    {
+                        _throttle.MarkPushed(latest.UserId, bookKey, DateTimeOffset.UtcNow);
+                        return PushAsync(latest);
+                    }
+
+                    return Task.CompletedTask;
+                },
+                TaskScheduler.Default).Unwrap();
+        }
+
+        private async Task PushAsync(Pending p)
+        {
+            await PushAsync(p.UserId, p.ItemGuid, p.ItemId, p.PartSeconds).ConfigureAwait(false);
         }
 
         private async Task PushAsync(Guid userId, Guid itemGuid, string itemId, double partSeconds)
@@ -103,5 +140,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
                 _logger.LogWarning(ex, "CadenceConfig: Storyteller push failed.");
             }
         }
+
+        private sealed record Pending(Guid UserId, Guid ItemGuid, string ItemId, double PartSeconds);
     }
 }
