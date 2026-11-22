@@ -40,6 +40,38 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
             config.LidarrUrl.Should().Be("http://localhost:8686");
             config.SyncIntervalHours.Should().Be(6);
             config.DeezerSubscriptions.Should().HaveCount(1);
+            config.StorytellerAdminToken.Should().BeEmpty("absent in old XML → default");
+            config.StorytellerLinks.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void StorytellerAdminAndLinkKind_RoundTripThroughXml()
+        {
+            var original = new PluginConfiguration
+            {
+                StorytellerUrl = "http://st",
+                StorytellerAdminUsername = "umbrel",
+                StorytellerAdminToken = "admin-tok",
+                StorytellerLinks = new[]
+                {
+                    new Storyteller.StorytellerLink { JellyfinUserId = System.Guid.Parse("11111111-2222-3333-4444-555555555555"), Username = "jf-john", Token = "t", Kind = Storyteller.LinkKind.Provisioned, Password = "pw" },
+                    new Storyteller.StorytellerLink { JellyfinUserId = System.Guid.Parse("11111111-2222-3333-4444-555555555556"), Username = "kim", Token = "t2" },
+                },
+            };
+            var serializer = new XmlSerializer(typeof(PluginConfiguration));
+            var sw = new StringWriter();
+            serializer.Serialize(sw, original);
+            using var reader = XmlReader.Create(new StringReader(sw.ToString()));
+
+            var config = (PluginConfiguration)serializer.Deserialize(reader)!;
+
+            config.StorytellerAdminUsername.Should().Be("umbrel");
+            config.StorytellerAdminToken.Should().Be("admin-tok");
+            config.StorytellerLinks.Should().HaveCount(2);
+            config.StorytellerLinks[0].Kind.Should().Be(Storyteller.LinkKind.Provisioned);
+            config.StorytellerLinks[0].Password.Should().Be("pw");
+            config.StorytellerLinks[1].Kind.Should().Be(Storyteller.LinkKind.Mapped, "the default for links saved before Kind existed");
+            config.StorytellerLinks[1].Password.Should().BeEmpty();
         }
     }
 }

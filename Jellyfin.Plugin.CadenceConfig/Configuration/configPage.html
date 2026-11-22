@@ -53,27 +53,45 @@
                     </div>
                     <h3>Storyteller (Whispersync + read-along)</h3>
                     <p class="fieldDescription">
-                        With a Storyteller URL set, each user connects their own Storyteller account from the
-                        Cadence client's Settings. Listening positions are pushed to Storyteller as they are
-                        saved, Storyteller reading positions are pulled back by the "Sync Storyteller positions"
-                        task, and Cadence can show the aligned text karaoke-style while a book plays. Tokens stay
-                        on this server.
+                        Set up once, here. With a Storyteller URL and a Storyteller admin login saved, every
+                        Jellyfin user gets read-along text and a shared listening/reading position in Cadence
+                        with no setup on their side: users with no account below get one created automatically
+                        the first time they open a book in Cadence; map a user to an existing Storyteller
+                        account if they already have one. Tokens and generated passwords stay on this server.
                     </p>
                     <div class="inputContainer">
                         <label for="StorytellerUrl">Storyteller URL:</label>
                         <input id="StorytellerUrl" name="StorytellerUrl" type="text" is="emby-input" />
-                        <div class="fieldDescription">Storyteller base URL (e.g. http://192.168.7.211:8001). Leave blank to turn the feature off.</div>
+                        <div class="fieldDescription">Storyteller base URL (e.g. http://192.168.7.211:8001). Leave blank to turn the feature off. Save, then connect the admin account below.</div>
                     </div>
                     <div class="inputContainer">
                         <label for="StorytellerSyncIntervalMinutes">Position sync interval (minutes):</label>
                         <input id="StorytellerSyncIntervalMinutes" name="StorytellerSyncIntervalMinutes" type="number" min="1" is="emby-input" />
                         <div class="fieldDescription">How often Storyteller reading positions are pulled into Jellyfin. Default 5. Takes effect after the next Jellyfin restart.</div>
                     </div>
-                    <div class="inputContainer">
-                        <label>Linked users:</label>
-                        <ul id="StorytellerLinks" class="fieldDescription"></ul>
-                        <div class="fieldDescription">Users who connected a Storyteller account. Removing a link signs that user out of the bridge; they can reconnect from Cadence.</div>
-                    </div>
+                </form>
+                <h3>Storyteller admin account</h3>
+                <p class="fieldDescription" id="StorytellerAdminStatus">Not connected.</p>
+                <div class="inputContainer">
+                    <label for="StorytellerAdminUsername">Storyteller admin username:</label>
+                    <input id="StorytellerAdminUsername" type="text" is="emby-input" autocomplete="off" />
+                </div>
+                <div class="inputContainer">
+                    <label for="StorytellerAdminPassword">Storyteller admin password:</label>
+                    <input id="StorytellerAdminPassword" type="password" is="emby-input" autocomplete="new-password" />
+                    <div class="fieldDescription">Used once to obtain an admin token (needed to create accounts). The password is not stored; the token never leaves this server.</div>
+                </div>
+                <div>
+                    <button is="emby-button" type="button" id="StorytellerAdminConnect" class="raised emby-button"><span>Connect admin account</span></button>
+                    <button is="emby-button" type="button" id="StorytellerAdminDisconnect" class="raised emby-button"><span>Disconnect</span></button>
+                </div>
+                <h3>Users</h3>
+                <p class="fieldDescription">One row per Jellyfin user. "Create account" makes a Storyteller account now (otherwise it happens on first use); "Show login" reveals a created account's username and password so you can pass it on for reading in Storyteller itself.</p>
+                <table class="detailTable" id="StorytellerUsers" style="width:100%">
+                    <thead><tr><th style="text-align:left">Jellyfin user</th><th style="text-align:left">Storyteller account</th><th style="text-align:left">Kind</th><th style="text-align:left">Actions</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+                <form class="CadenceConfigForm CadenceConfigFormTail">
                     <div>
                         <button is="emby-button" type="submit" class="raised button-submit block emby-button">
                             <span>Save</span>
@@ -84,12 +102,108 @@
         </div>
         <script type="text/javascript">
             var CadenceConfig = {
-                pluginUniqueId: '7d49437c-2e97-430f-b6b7-fa9d58110448',
-                removedLinks: {}
+                pluginUniqueId: '7d49437c-2e97-430f-b6b7-fa9d58110448'
             };
 
-            document.querySelector('.CadenceConfigForm')
-                .addEventListener('submit', function (e) {
+            // Admin API (Jellyfin admins only; nothing here ever returns a token).
+            function adminCall(method, path, body) {
+                var options = { type: method, url: ApiClient.getUrl('Cadence/Storyteller/Admin/' + path) };
+                if (body) { options.data = JSON.stringify(body); options.contentType = 'application/json'; }
+                if (method === 'GET' || method === 'POST' || method === 'PUT') { options.dataType = 'json'; }
+                return ApiClient.ajax(options);
+            }
+
+            function describeFailure(err, what) {
+                var status = err && err.status;
+                if (status === 401) return what + ': Storyteller rejected that username/password.';
+                if (status === 404) return what + ': save a Storyteller URL first.';
+                if (status === 409) return what + ': that user is already linked.';
+                if (status === 412) return what + ': connect the Storyteller admin account first.';
+                if (status === 502) return what + ': Storyteller is unreachable from the server.';
+                return what + ' failed (HTTP ' + status + ').';
+            }
+
+            function actionButton(label, onClick) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.setAttribute('is', 'emby-button');
+                b.className = 'raised emby-button';
+                b.style.marginRight = '0.4em';
+                b.textContent = label;
+                b.addEventListener('click', onClick);
+                return b;
+            }
+
+            function renderUsers(result) {
+                var status = document.querySelector('#StorytellerAdminStatus');
+                status.textContent = result.AdminConnected
+                    ? 'Connected as ' + result.AdminUsername + '. New users get a Storyteller account automatically.'
+                    : 'Not connected. Until an admin account is connected, only users mapped below can use Storyteller features.';
+                var body = document.querySelector('#StorytellerUsers tbody');
+                body.innerHTML = '';
+                result.Users.forEach(function (row) {
+                    var tr = document.createElement('tr');
+                    var cells = [row.JellyfinUsername, row.Linked ? row.StorytellerUsername : '—', row.Kind || '—'];
+                    cells.forEach(function (text) { var td = document.createElement('td'); td.textContent = text; tr.appendChild(td); });
+                    var actions = document.createElement('td');
+                    actions.appendChild(actionButton(row.Linked ? 'Re-map…' : 'Map existing…', function () {
+                        var username = window.prompt('Storyteller username for ' + row.JellyfinUsername + ':', row.StorytellerUsername || '');
+                        if (!username) return;
+                        var password = window.prompt('Storyteller password for ' + username + ' (used once, not stored):');
+                        if (!password) return;
+                        adminCall('PUT', 'Users/' + row.JellyfinUserId, { Username: username, Password: password })
+                            .then(loadUsers, function (err) { Dashboard.alert(describeFailure(err, 'Map')); });
+                    }));
+                    if (!row.Linked) {
+                        actions.appendChild(actionButton('Create account', function () {
+                            adminCall('POST', 'Users/' + row.JellyfinUserId + '/Provision')
+                                .then(function (creds) {
+                                    Dashboard.alert('Storyteller account created for ' + row.JellyfinUsername + '.\nUsername: ' + creds.Username + '\nPassword: ' + creds.Password);
+                                    loadUsers();
+                                }, function (err) { Dashboard.alert(describeFailure(err, 'Create account')); });
+                        }));
+                    }
+                    if (row.Kind === 'provisioned') {
+                        actions.appendChild(actionButton('Show login', function () {
+                            adminCall('GET', 'Users/' + row.JellyfinUserId + '/Credentials')
+                                .then(function (creds) { Dashboard.alert('Storyteller login for ' + row.JellyfinUsername + '\nUsername: ' + creds.Username + '\nPassword: ' + creds.Password); },
+                                    function (err) { Dashboard.alert(describeFailure(err, 'Show login')); });
+                        }));
+                    }
+                    if (row.Linked) {
+                        actions.appendChild(actionButton('Unlink', function () {
+                            adminCall('DELETE', 'Users/' + row.JellyfinUserId).then(loadUsers, function (err) { Dashboard.alert(describeFailure(err, 'Unlink')); });
+                        }));
+                    }
+                    tr.appendChild(actions);
+                    body.appendChild(tr);
+                });
+            }
+
+            function loadUsers() {
+                return adminCall('GET', 'Users').then(renderUsers, function () {
+                    document.querySelector('#StorytellerAdminStatus').textContent = 'Could not load users (is the plugin up to date?).';
+                });
+            }
+
+            document.querySelector('#StorytellerAdminConnect').addEventListener('click', function () {
+                var username = document.querySelector('#StorytellerAdminUsername').value;
+                var password = document.querySelector('#StorytellerAdminPassword').value;
+                if (!username || !password) { Dashboard.alert('Enter the Storyteller admin username and password.'); return; }
+                Dashboard.showLoadingMsg();
+                adminCall('POST', 'Login', { Username: username, Password: password }).then(function () {
+                    document.querySelector('#StorytellerAdminPassword').value = '';
+                    Dashboard.hideLoadingMsg();
+                    loadUsers();
+                }, function (err) { Dashboard.hideLoadingMsg(); Dashboard.alert(describeFailure(err, 'Connect')); });
+            });
+
+            document.querySelector('#StorytellerAdminDisconnect').addEventListener('click', function () {
+                adminCall('DELETE', 'Login').then(loadUsers, function (err) { Dashboard.alert(describeFailure(err, 'Disconnect')); });
+            });
+
+            Array.prototype.forEach.call(document.querySelectorAll('.CadenceConfigForm'), function (form) {
+              form.addEventListener('submit', function (e) {
                     e.preventDefault();
                     Dashboard.showLoadingMsg();
 
@@ -102,9 +216,6 @@
                         config.SyncIntervalHours = parseInt(document.querySelector('#SyncIntervalHours').value, 10) || 12;
                         config.StorytellerUrl = document.querySelector('#StorytellerUrl').value;
                         config.StorytellerSyncIntervalMinutes = parseInt(document.querySelector('#StorytellerSyncIntervalMinutes').value, 10) || 5;
-                        config.StorytellerLinks = (config.StorytellerLinks || []).filter(function (link) {
-                            return !CadenceConfig.removedLinks[link.JellyfinUserId];
-                        });
 
                         ApiClient.updatePluginConfiguration(CadenceConfig.pluginUniqueId, config).then(function (result) {
                             Dashboard.processPluginConfigurationUpdateResult(result);
@@ -112,7 +223,8 @@
                     });
 
                     return false;
-                });
+              });
+            });
 
             document.querySelector('#CadenceConfigPage').addEventListener('pageshow', function () {
                 Dashboard.showLoadingMsg();
@@ -126,29 +238,8 @@
                     document.querySelector('#SyncIntervalHours').value = config.SyncIntervalHours || 12;
                     document.querySelector('#StorytellerUrl').value = config.StorytellerUrl || '';
                     document.querySelector('#StorytellerSyncIntervalMinutes').value = config.StorytellerSyncIntervalMinutes || 5;
-                    CadenceConfig.removedLinks = {};
-                    var list = document.querySelector('#StorytellerLinks');
-                    list.innerHTML = '';
-                    (config.StorytellerLinks || []).forEach(function (link) {
-                        // Username + Jellyfin user id only — the token is never rendered.
-                        var item = document.createElement('li');
-                        item.textContent = (link.Username || '(unknown)') + ' — Jellyfin user ' + link.JellyfinUserId + ' ';
-                        var remove = document.createElement('button');
-                        remove.type = 'button';
-                        remove.setAttribute('is', 'emby-button');
-                        remove.className = 'raised emby-button';
-                        remove.textContent = 'Remove';
-                        remove.addEventListener('click', function () {
-                            CadenceConfig.removedLinks[link.JellyfinUserId] = true;
-                            item.remove();
-                        });
-                        item.appendChild(remove);
-                        list.appendChild(item);
-                    });
-                    if (!(config.StorytellerLinks || []).length) {
-                        list.textContent = 'No users linked yet.';
-                    }
-
+                    document.querySelector('#StorytellerAdminUsername').value = config.StorytellerAdminUsername || '';
+                    loadUsers();
                     Dashboard.hideLoadingMsg();
                 });
             });
