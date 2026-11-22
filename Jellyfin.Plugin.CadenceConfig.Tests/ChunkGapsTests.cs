@@ -68,6 +68,16 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
         }
 
         [Fact]
+        public void Reconcile_LeadingHoles_ShiftEverything()
+        {
+            // Chunks 1 and 2 were silent: everything present starts 20 s later than the readaloud says.
+            var raw = Raw(("x-3.mp4", 0), ("x-4.mp4", 10));
+            var t = ChunkGaps.Reconcile(raw, 40);
+            t.AudioOffsets.Should().Equal(20, 30);
+            t.Clips.Select(c => c.Start).Should().Equal(21, 25, 31, 35);
+        }
+
+        [Fact]
         public void Reconcile_TwoHoles_ShareTheLeftoverEvenly()
         {
             var raw = Raw(("x-1.mp4", 0), ("x-3.mp4", 10), ("x-5.mp4", 20));

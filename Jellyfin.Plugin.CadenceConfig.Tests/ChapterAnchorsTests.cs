@@ -8,9 +8,8 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
 {
     public class ChapterAnchorsTests
     {
-        // Hogfather in miniature: 6 chapters at 0, 30, 42, 170, 400, 900 (total 950). Storyteller embedded chunks
-        // 1, 4, 5 only — 2 and 3 (credits, theme) and 6 (end credits) carry no narration. Chunk lengths are the
-        // chapter lengths: 30, 230, 500.
+        // Hogfather in miniature: chapters at 0, 30, 42, 170, 400, 900 (total 950). Chunks 1, 4, 5 embedded;
+        // 2, 3 (credits, theme) and 6 (end credits) are silent and missing. Lengths = chapter lengths.
         private static readonly double[] Marks = { 0, 30, 42, 170, 400, 900 };
 
         private static Timeline Raw() => new()
@@ -39,28 +38,31 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
         }
 
         [Fact]
-        public void Reconcile_BeatsTheEvenSplit_WhenATrailingChunkIsAlsoMissing()
+        public void Walk_LeadingSilentChunks_AndChaptersCutInPieces()
         {
-            // The even split would put (950-760)=190 s over the two middle holes = 95 each, landing chapter 1 at 125 s
-            // instead of 170 s. Markers make it exact.
-            var even = ChunkGaps.Reconcile(Raw(), 950);
-            even.Clips.First(c => c.Fragment == "ch1-first").Start.Should().NotBe(171);
-            ChapterAnchors.Reconcile(Raw(), 950, Marks)!.Clips.First(c => c.Fragment == "ch1-first").Start.Should().Be(171);
+            // The Institute's shape: chapters 0, 46, 55, 132, 5000, 12300 (total 14000). Chunks 1 and 2 (intro,
+            // credits) are silent and missing; chapter 4 (132..5000) is one chunk; chapter 5 (5000..12300) is
+            // two pieces of 4000 + 3300; the last chapter is one chunk.
+            var marks = new[] { 0.0, 46, 55, 132, 5000, 12300 };
+            var present = new[] { 3, 4, 5, 6, 7 };
+            var probed = new[] { 77.0, 4868, 4000, 3300, 1700 };
+
+            var starts = ChapterAnchors.Walk(present, probed, marks, 14000);
+
+            starts.Should().Equal(55, 132, 5000, 9000, 12300);
         }
 
         [Fact]
-        public void Reconcile_ReturnsNull_WhenChunkLengthsDisagreeWithTheChapters()
+        public void Walk_ReturnsNull_WhenPiecesDoNotAddUpToTheChapter()
         {
-            // Silence-split book: chunks don't correspond to the chapter marks.
-            var marks = new[] { 0.0, 100, 300, 500, 700, 900 };
-            ChapterAnchors.Reconcile(Raw(), 950, marks).Should().BeNull();
+            var marks = new[] { 0.0, 100, 300, 500 };
+            ChapterAnchors.Walk(new[] { 1, 2, 3 }, new[] { 100.0, 150, 200 }, marks, 700).Should().BeNull();
         }
 
         [Fact]
-        public void Reconcile_ReturnsNull_WithoutUsableMarkers()
+        public void Reconcile_ReturnsNull_WithoutUsableMarkersOrNumbers()
         {
             ChapterAnchors.Reconcile(Raw(), 950, new double[0]).Should().BeNull();
-            ChapterAnchors.Reconcile(Raw(), 950, new[] { 0.0, 30 }).Should().BeNull("fewer markers than chunk numbers");
             var unnumbered = Raw();
             unnumbered.AudioFiles = new[] { "intro.mp4", "body.mp4", "end.mp4" };
             ChapterAnchors.Reconcile(unnumbered, 950, Marks).Should().BeNull();
@@ -70,7 +72,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
         public void Reconcile_ToleratesSmallProbeDrift()
         {
             var raw = Raw();
-            raw.AudioOffsets = new[] { 0.0, 31.2, 262.0 }; // each chunk ~1 s off its chapter length
+            raw.AudioOffsets = new[] { 0.0, 31.2, 262.0 };
             raw.Total = 761.5;
             ChapterAnchors.Reconcile(raw, 950, Marks).Should().NotBeNull();
         }
