@@ -132,7 +132,11 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
             Timeline? timeline = null;
             if (book != null && !string.IsNullOrEmpty(book.AlignedAt))
             {
-                timeline = await _timelines.GetAsync(baseUrl, link.Token, book, cancellationToken).ConfigureAwait(false);
+                var raw = await _timelines.GetAsync(baseUrl, link.Token, book, cancellationToken).ConfigureAwait(false);
+
+                // The cached timeline is pure Storyteller; the audiobook's length is Jellyfin's, so the
+                // reconciliation (missing silent chunks) happens here, per resolve.
+                timeline = raw == null ? null : ChunkGaps.Reconcile(raw, PartsTimeline.Total(parts));
             }
 
             var status = StatusFor(true, book, timeline, PartsTimeline.Total(parts));
