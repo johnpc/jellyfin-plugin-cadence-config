@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using Jellyfin.Data.Enums;
 using Jellyfin.Database.Implementations.Entities;
+using MediaBrowser.Controller.Chapters;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Audio;
 using MediaBrowser.Controller.Library;
@@ -23,6 +24,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
         private readonly ILibraryManager _libraryManager;
         private readonly IUserManager _userManager;
         private readonly IUserDataManager _userDataManager;
+        private readonly IChapterManager _chapters;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JellyfinBooks"/> class.
@@ -30,11 +32,34 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
         /// <param name="libraryManager">The library manager.</param>
         /// <param name="userManager">The user manager.</param>
         /// <param name="userDataManager">The user-data manager.</param>
-        public JellyfinBooks(ILibraryManager libraryManager, IUserManager userManager, IUserDataManager userDataManager)
+        /// <param name="chapters">Jellyfin's chapter store (the m4b's embedded markers).</param>
+        public JellyfinBooks(ILibraryManager libraryManager, IUserManager userManager, IUserDataManager userDataManager, IChapterManager chapters)
         {
             _libraryManager = libraryManager;
             _userManager = userManager;
             _userDataManager = userDataManager;
+            _chapters = chapters;
+        }
+
+        /// <summary>The book's embedded chapter markers as global seconds (part offset + marker), ascending.</summary>
+        /// <param name="parts">The parts in play order.</param>
+        /// <returns>Marker times; empty when the files carry none.</returns>
+        public IReadOnlyList<double> ChapterStarts(IReadOnlyList<BookPart> parts)
+        {
+            var marks = new List<double>();
+            double offset = 0;
+            foreach (var part in parts)
+            {
+                foreach (var chapter in _chapters.GetChapters(Guid.Parse(part.ItemId)))
+                {
+                    marks.Add(offset + PartsTimeline.TicksToSeconds(chapter.StartPositionTicks));
+                }
+
+                offset += part.Duration;
+            }
+
+            marks.Sort();
+            return marks;
         }
 
         /// <summary>Every AudioBook item in the library as <see cref="PartInfo"/>.</summary>
