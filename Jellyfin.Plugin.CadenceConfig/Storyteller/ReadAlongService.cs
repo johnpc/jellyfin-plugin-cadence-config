@@ -147,9 +147,13 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
             {
                 var raw = await _timelines.GetAsync(baseUrl, link.Token, book, cancellationToken).ConfigureAwait(false);
 
-                // The cached timeline is pure Storyteller; the audiobook's length is Jellyfin's, so the
-                // reconciliation (missing silent chunks) happens here, per resolve.
-                timeline = raw == null ? null : ChunkGaps.Reconcile(raw, PartsTimeline.Total(parts));
+                // The cached timeline is pure Storyteller; the audiobook's length and chapter markers are
+                // Jellyfin's, so the reconciliation (chunks Storyteller never embedded) happens here, per
+                // resolve: exact chapter anchoring when the chunks are the m4b's chapters, else the leftover split.
+                var total = PartsTimeline.Total(parts);
+                timeline = raw == null
+                    ? null
+                    : ChapterAnchors.Reconcile(raw, total, _jellyfin.ChapterStarts(parts)) ?? ChunkGaps.Reconcile(raw, total);
             }
 
             var status = StatusFor(true, book, timeline, PartsTimeline.Total(parts));
