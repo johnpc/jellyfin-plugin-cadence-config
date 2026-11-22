@@ -19,6 +19,7 @@ owner: "johnpc"
 artifacts:
   - "Jellyfin.Plugin.CadenceConfig.dll"
 changelog: >
-  Storyteller bridge: per-user account linking (token stays server-side), Whispersync position sync
-  (push on save, pull on a timer), and the read-along endpoints (timeline, text proxy, merged position)
-  the Cadence client uses for karaoke-style highlighting. /Cadence/Config gains "Storyteller".
+  Storyteller: admin-managed accounts. The dashboard stores a Storyteller admin login and lists every
+  Jellyfin user; users with no account get one created automatically on first use, or the admin maps
+  them to an existing Storyteller account. No per-user setup in Cadence. Admin-only endpoints under
+  /Cadence/Storyteller/Admin; tokens and generated passwords never leave the server.

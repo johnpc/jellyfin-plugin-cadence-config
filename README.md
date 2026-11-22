@@ -80,25 +80,40 @@ into two things for Jellyfin audiobooks:
   text through the plugin and highlights the sentence being narrated karaoke-style; tapping a sentence
   seeks the audio.
 
-### Configuration
+### Configuration — the server maintainer sets it up once; users do nothing
 
 | Field | Purpose |
 |-------|---------|
 | Storyteller URL | Storyteller base URL (e.g. `http://192.168.7.211:8001`). Blank = feature off. |
 | Position sync interval (minutes) | How often Storyteller reading positions are pulled into Jellyfin. Default 5. |
-| Linked users | Read-only list of users who connected an account; an admin can remove a link. |
+| Storyteller admin account | A Storyteller admin's username + password, exchanged once for an admin token. With it stored, **every Jellyfin user with no account gets one created automatically** (`jf-<username>`, reader permissions only) the first time they open a book in Cadence. |
+| Users table | One row per Jellyfin user: **Map existing…** (a user who already has a Storyteller account — their password is used once and not stored), **Create account** (provision now instead of on first use), **Show login** (reveal a created account's username/password so you can hand it to the person for reading in Storyteller itself), **Unlink**. |
 
-Users connect their own Storyteller account from the Cadence client's Settings. The password is
-exchanged once for a Storyteller token that is stored in plugin configuration and only ever used inside
-the server. Storyteller positions are per Storyteller user, so the plugin always acts as the linked
-user, never as an admin.
+Nothing is configured per device or per app. Storyteller positions are per Storyteller user, so the
+plugin always acts as that user's account, never as the admin — the admin token is used only to create
+accounts. Created accounts' passwords are kept in plugin configuration (server-side, admin-only
+endpoint) precisely so the admin can pass them on; a mapped account's password is never kept.
+
+### Admin endpoints (Jellyfin administrators only — `RequiresElevation`; API keys qualify)
+
+| Endpoint | What it does |
+|----------|--------------|
+| `POST\|DELETE /Cadence/Storyteller/Admin/Login` | Store / forget the Storyteller admin login (`{Username, Password}` → `{Connected, Username}`; 401 / 404 no URL / 502) |
+| `GET /Cadence/Storyteller/Admin/Users` | `{AdminConnected, AdminUsername, Users:[{JellyfinUserId, JellyfinUsername, Linked, StorytellerUsername, Kind}]}` — never a token |
+| `PUT /Cadence/Storyteller/Admin/Users/{userId}` | Map to an existing Storyteller account (`{Username, Password}`; password used once) |
+| `POST /Cadence/Storyteller/Admin/Users/{userId}/Provision` | Create the account now → `{Username, Password}` (409 already linked · 412 no admin login) |
+| `GET /Cadence/Storyteller/Admin/Users/{userId}/Credentials` | A created account's login (404 for mapped/unlinked) |
+| `DELETE /Cadence/Storyteller/Admin/Users/{userId}` | Unlink (the Storyteller account itself is untouched) |
+
+`LinkKind` is one explicit value per link — `mapped` (admin pointed at an existing account) or
+`provisioned` (the plugin created it) — and decides what the admin may be shown.
 
 ### Endpoints (all authenticated, caller-scoped — no `userId` parameter anywhere)
 
 | Endpoint | What it does |
 |----------|--------------|
 | `GET /Cadence/Config` | …plus `Storyteller: true` when a URL is configured |
-| `GET\|POST\|DELETE /Cadence/Storyteller/Link` | The caller's link: `{Linked, Username}`; POST `{Username, Password}` → 200 / 401 bad credentials / 404 not configured / 502 unreachable |
+| `GET\|POST\|DELETE /Cadence/Storyteller/Link` | The caller's own link (legacy self-service; Cadence no longer uses it — accounts are admin-managed or auto-created) |
 | `GET /Cadence/Storyteller/Books/{itemId}` | `Status` (`unlinked` · `unmatched` · `aligning` · `mismatch` · `ready`), `Parts`, `Chapters`, `Clips` (global seconds ↔ sentence id) |
 | `GET /Cadence/Storyteller/Books/{itemId}/Text/{path}` | Streams a chapter/image/css of the aligned publication with the caller's token (Range honoured) |
 | `GET\|PUT /Cadence/Storyteller/Books/{itemId}/Position` | The newer of Storyteller's and Jellyfin's position as global seconds; PUT pushes (409 = Storyteller is newer) |
@@ -115,8 +130,9 @@ aligned audio's total length differs from the Jellyfin book's by more than 3 s t
 
 ### Security
 
-- The Storyteller token never leaves the server: `/Cadence/Config` only carries a boolean, the link
-  endpoint returns the username and a flag, the text proxy attaches the token upstream.
+- No Storyteller token ever leaves the server — not a user's, not the admin's: `/Cadence/Config` only
+  carries a boolean, the admin endpoints return usernames and flags, the text proxy attaches the token
+  upstream. Generated passwords are revealed only through the admin-only credentials endpoint.
 - Everything is scoped to the verified caller (`CallerScope`), so one user can't read another's
   positions or text.
 - Chapter text is third-party HTML from the user's own Storyteller; the Cadence client sanitizes it

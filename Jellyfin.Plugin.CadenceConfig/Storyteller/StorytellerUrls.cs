@@ -37,6 +37,16 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
         /// <returns>The URL.</returns>
         public static string Books(string baseUrl) => $"{baseUrl}/api/v2/books";
 
+        /// <summary>The invites endpoint (admin: create an invite for a new user).</summary>
+        /// <param name="baseUrl">The normalized base URL.</param>
+        /// <returns>The URL.</returns>
+        public static string Invites(string baseUrl) => $"{baseUrl}/api/v2/invites";
+
+        /// <summary>The users endpoint (accept an invite: creates the account and returns its token).</summary>
+        /// <param name="baseUrl">The normalized base URL.</param>
+        /// <returns>The URL.</returns>
+        public static string Users(string baseUrl) => $"{baseUrl}/api/v2/users";
+
         /// <summary>The per-user position endpoint for a book.</summary>
         /// <param name="baseUrl">The normalized base.</param>
         /// <param name="bookUuid">The book.</param>

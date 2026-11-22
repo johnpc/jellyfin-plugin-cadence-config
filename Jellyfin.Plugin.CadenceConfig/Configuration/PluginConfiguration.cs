@@ -28,6 +28,8 @@ namespace Jellyfin.Plugin.CadenceConfig.Configuration
             StorytellerUrl = string.Empty;
             StorytellerSyncIntervalMinutes = 5;
             StorytellerLinks = Array.Empty<StorytellerLink>();
+            StorytellerAdminUsername = string.Empty;
+            StorytellerAdminToken = string.Empty;
         }
 
         /// <summary>
@@ -105,5 +107,17 @@ namespace Jellyfin.Plugin.CadenceConfig.Configuration
         /// An array because Jellyfin serializes plugin configuration as XML (CA1819 suppressed).
         /// </summary>
         public StorytellerLink[] StorytellerLinks { get; set; }
+
+        /// <summary>
+        /// Gets or sets the Storyteller admin account's username (display only). With an admin token
+        /// present, Jellyfin users with no link get a Storyteller account created for them automatically.
+        /// </summary>
+        public string StorytellerAdminUsername { get; set; }
+
+        /// <summary>
+        /// Gets or sets the Storyteller admin bearer token used to create accounts. A server-side
+        /// secret: never returned by any endpoint and never rendered in the dashboard.
+        /// </summary>
+        public string StorytellerAdminToken { get; set; }
     }
 }

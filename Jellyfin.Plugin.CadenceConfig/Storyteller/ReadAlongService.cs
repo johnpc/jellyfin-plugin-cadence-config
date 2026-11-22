@@ -18,21 +18,24 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
         private readonly BookCatalog _catalog;
         private readonly TimelineBuilder _timelines;
         private readonly JellyfinBooks _jellyfin;
+        private readonly UserProvisioner? _provisioner;
         private readonly Func<PluginConfiguration> _config;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ReadAlongService"/> class.
+        /// Initializes a new instance of the <see cref="ReadAlongService"/> class (production wiring).
         /// </summary>
         /// <param name="catalog">The Storyteller catalog.</param>
         /// <param name="timelines">The timeline builder.</param>
         /// <param name="jellyfin">Jellyfin library plumbing.</param>
-        public ReadAlongService(BookCatalog catalog, TimelineBuilder timelines, JellyfinBooks jellyfin)
+        /// <param name="provisioner">Creates Storyteller accounts for users who have none.</param>
+        public ReadAlongService(BookCatalog catalog, TimelineBuilder timelines, JellyfinBooks jellyfin, UserProvisioner provisioner)
             : this(catalog, timelines, jellyfin, Plugin.GetConfiguration)
         {
+            _provisioner = provisioner;
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ReadAlongService"/> class with an explicit config source.
+        /// Initializes a new instance of the <see cref="ReadAlongService"/> class with an explicit config source (tests; no provisioning).
         /// </summary>
         /// <param name="catalog">The Storyteller catalog.</param>
         /// <param name="timelines">The timeline builder.</param>
@@ -108,6 +111,14 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
 
             var (anchor, parts) = found.Value;
             var link = LinkStore.Find(config, callerId);
+            if (link == null && _provisioner != null)
+            {
+                // No link yet: with an admin login stored, make the user a Storyteller account on the spot
+                // — "the app should just work", nobody configures anything per device.
+                var username = _jellyfin.UserOf(callerId)?.Username;
+                link = username == null ? null : await _provisioner.EnsureLinkAsync(callerId, username, cancellationToken).ConfigureAwait(false);
+            }
+
             if (link == null)
             {
                 // Unlinked: no Storyteller token, but the caller is still a real Jellyfin user — the

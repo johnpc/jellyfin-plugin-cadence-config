@@ -47,6 +47,9 @@ namespace Jellyfin.Plugin.CadenceConfig.Registration
             // timeline builder with its on-disk cache, Jellyfin plumbing, and the two bridge halves —
             // PositionBridge pushes saved positions as they happen; StorytellerSyncTask pulls on a timer.
             serviceCollection.AddSingleton<StorytellerClient>();
+            serviceCollection.AddSingleton<StorytellerAccounts>();
+            serviceCollection.AddSingleton<ILinkWriter, PluginLinkWriter>();
+            serviceCollection.AddSingleton<UserProvisioner>();
             serviceCollection.AddSingleton<BookCatalog>();
             serviceCollection.AddSingleton(sp => new TimelineCache(
                 System.IO.Path.Combine(sp.GetRequiredService<IApplicationPaths>().CachePath, "cadence-storyteller")));
