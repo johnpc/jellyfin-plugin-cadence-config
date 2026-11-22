@@ -22,9 +22,17 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
         /// </summary>
         public static readonly TimeSpan UnalignedTtl = TimeSpan.FromSeconds(30);
 
+        /// <summary>
+        /// How long to stop asking after Storyteller refused or timed out. Without it every audiobook
+        /// position save (one per ~10 s per listener) retried and logged a warning while Storyteller
+        /// was down for maintenance — ~400 warnings in an hour on 2026-11-22. One attempt a minute is plenty.
+        /// </summary>
+        public static readonly TimeSpan OutageBackoff = TimeSpan.FromSeconds(60);
+
         private readonly StorytellerClient _client;
         private readonly Func<DateTimeOffset> _now;
         private readonly ConcurrentDictionary<string, (DateTimeOffset At, IReadOnlyList<StorytellerBook> Books)> _byToken = new();
+        private readonly ConcurrentDictionary<string, DateTimeOffset> _failedAt = new();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="BookCatalog"/> class.
@@ -80,12 +88,23 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
 
         /// <summary>Drops the cached list for a token (after a link is replaced).</summary>
         /// <param name="token">The token.</param>
-        public void Forget(string token) => _byToken.TryRemove(token, out _);
+        public void Forget(string token)
+        {
+            _byToken.TryRemove(token, out _);
+            _failedAt.TryRemove(token, out _);
+        }
 
         private async Task<IReadOnlyList<StorytellerBook>?> BooksAsync(string baseUrl, string token, TimeSpan maxAge, CancellationToken cancellationToken)
         {
-            if (_byToken.TryGetValue(token, out var cached) && _now() - cached.At < maxAge)
+            var now = _now();
+            if (_byToken.TryGetValue(token, out var cached) && now - cached.At < maxAge)
             {
+                return cached.Books;
+            }
+
+            if (_failedAt.TryGetValue(token, out var failed) && now - failed < OutageBackoff)
+            {
+                // Storyteller was unreachable a moment ago: serve the stale list if there is one, else nothing.
                 return cached.Books;
             }
 
@@ -93,6 +112,11 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
             if (books != null)
             {
                 _byToken[token] = (_now(), books);
+                _failedAt.TryRemove(token, out _);
+            }
+            else
+            {
+                _failedAt[token] = _now();
             }
 
             return books;

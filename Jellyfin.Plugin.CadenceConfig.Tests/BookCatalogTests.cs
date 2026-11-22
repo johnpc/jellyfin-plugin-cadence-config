@@ -30,6 +30,51 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
             }
         }
 
+        private sealed class FlakyHandler : HttpMessageHandler
+        {
+            public int Calls { get; private set; }
+
+            public bool Down { get; set; } = true;
+
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                Calls++;
+                if (Down)
+                {
+                    throw new HttpRequestException("Connection refused");
+                }
+
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("[{\"uuid\":\"u1\",\"title\":\"Dune\",\"alignedAt\":\"x\",\"authors\":[{\"name\":\"Frank Herbert\"}]}]", System.Text.Encoding.UTF8, "application/json"),
+                });
+            }
+        }
+
+        [Fact]
+        public async Task Books_WhileStorytellerIsDown_AskOnceAMinute_ThenRecover()
+        {
+            var handler = new FlakyHandler();
+            var clock = System.DateTimeOffset.Parse("2026-11-22T15:15:00Z", System.Globalization.CultureInfo.InvariantCulture);
+            var factory = Substitute.For<IHttpClientFactory>();
+            factory.CreateClient(Arg.Any<string>()).Returns(_ => new HttpClient(handler, false));
+            var catalog = new BookCatalog(new StorytellerClient(factory, NullLogger<StorytellerClient>.Instance), () => clock);
+
+            (await catalog.BooksAsync("http://st", "tok", CancellationToken.None)).Should().BeNull();
+            for (var i = 0; i < 5; i++)
+            {
+                clock = clock.AddSeconds(10);
+                (await catalog.BooksAsync("http://st", "tok", CancellationToken.None)).Should().BeNull();
+            }
+
+            handler.Calls.Should().Be(1, "saves every 10 s must not each hit a server that just refused");
+
+            clock = clock.AddSeconds(15);
+            handler.Down = false;
+            (await catalog.BooksAsync("http://st", "tok", CancellationToken.None)).Should().HaveCount(1);
+            handler.Calls.Should().Be(2, "after the backoff it asks again and recovers");
+        }
+
         private static BookCatalog Catalog(CountingHandler handler, System.Func<System.DateTimeOffset> now)
         {
             var factory = Substitute.For<IHttpClientFactory>();
