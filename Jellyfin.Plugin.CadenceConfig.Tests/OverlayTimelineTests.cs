@@ -41,13 +41,13 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
         }
 
         [Fact]
-        public void Check_ReadyWithinThreeSeconds_MismatchBeyond_MismatchWithoutClips()
+        public void Check_ReadyWithinThreeSeconds_MismatchBeyond_EmptyWithoutClips()
         {
             var t = TimelineFixture.Build();
             OverlayTimeline.Check(t, 30).Should().Be(ReadAlongStatus.Ready);
             OverlayTimeline.Check(t, 32.9).Should().Be(ReadAlongStatus.Ready);
             OverlayTimeline.Check(t, 34).Should().Be(ReadAlongStatus.Mismatch);
-            OverlayTimeline.Check(new Timeline(), 0).Should().Be(ReadAlongStatus.Mismatch);
+            OverlayTimeline.Check(new Timeline(), 0).Should().Be(ReadAlongStatus.Empty);
         }
 
         [Fact]

@@ -114,7 +114,7 @@ endpoint) precisely so the admin can pass them on; a mapped account's password i
 |----------|--------------|
 | `GET /Cadence/Config` | …plus `Storyteller: true` when a URL is configured |
 | `GET\|POST\|DELETE /Cadence/Storyteller/Link` | The caller's own link (legacy self-service; Cadence no longer uses it — accounts are admin-managed or auto-created) |
-| `GET /Cadence/Storyteller/Books/{itemId}` | `Status` (`unlinked` · `unmatched` · `aligning` · `mismatch` · `ready`), `Parts`, `Chapters`, `Clips` (global seconds ↔ sentence id) |
+| `GET /Cadence/Storyteller/Books/{itemId}` | `Status` (`unlinked` · `unmatched` · `aligning` · `mismatch` · `empty` · `ready`), `Parts`, `Chapters`, `Clips` (global seconds ↔ sentence id) |
 | `GET /Cadence/Storyteller/Books/{itemId}/Text/{path}` | Streams a chapter/image/css of the aligned publication with the caller's token (Range honoured) |
 | `GET\|PUT /Cadence/Storyteller/Books/{itemId}/Position` | The newer of Storyteller's and Jellyfin's position as global seconds; PUT pushes (409 = Storyteller is newer) |
 

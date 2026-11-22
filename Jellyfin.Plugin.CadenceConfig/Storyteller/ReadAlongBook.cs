@@ -42,6 +42,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
                 ReadAlongStatus.Unmatched => "unmatched",
                 ReadAlongStatus.Aligning => "aligning",
                 ReadAlongStatus.Mismatch => "mismatch",
+                ReadAlongStatus.Empty => "empty",
                 _ => "ready",
             };
         }
