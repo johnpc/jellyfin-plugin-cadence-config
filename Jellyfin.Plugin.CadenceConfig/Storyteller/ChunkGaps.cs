@@ -66,7 +66,8 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
         /// <returns>A shift per file (0 for files before the first hole).</returns>
         public static double[] ShiftsForHoles(IReadOnlyList<int> numbers, double leftover)
         {
-            var holes = 0;
+            // Holes before the first present chunk count too (The Institute: chunks 1 and 2 were silent).
+            var holes = Math.Max(0, numbers[0] - 1);
             for (var i = 1; i < numbers.Count; i++)
             {
                 holes += Math.Max(0, numbers[i] - numbers[i - 1] - 1);
@@ -79,7 +80,8 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
             }
 
             var perHole = leftover / holes;
-            double running = 0;
+            double running = Math.Max(0, numbers[0] - 1) * perHole;
+            shifts[0] = running;
             for (var i = 1; i < numbers.Count; i++)
             {
                 running += Math.Max(0, numbers[i] - numbers[i - 1] - 1) * perHole;
