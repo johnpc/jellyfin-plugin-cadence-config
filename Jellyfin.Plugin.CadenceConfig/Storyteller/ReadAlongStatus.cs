@@ -21,6 +21,13 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
         /// <summary>Aligned, but the aligned audio does not line up with this Jellyfin book's files.</summary>
         Mismatch,
 
+        /// <summary>
+        /// Storyteller marked the book aligned but its publication carries no sentence timing at all (seen
+        /// live when a book was paired with the wrong-language ebook): nothing to highlight, and not an
+        /// audio mismatch — the fix is re-pairing in Storyteller.
+        /// </summary>
+        Empty,
+
         /// <summary>Aligned and in step: clips are populated.</summary>
         Ready,
     }

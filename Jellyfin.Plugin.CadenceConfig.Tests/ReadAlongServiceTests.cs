@@ -46,6 +46,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
         [InlineData(ReadAlongStatus.Unmatched, "unmatched")]
         [InlineData(ReadAlongStatus.Aligning, "aligning")]
         [InlineData(ReadAlongStatus.Mismatch, "mismatch")]
+        [InlineData(ReadAlongStatus.Empty, "empty")]
         public void ToResponse_NotReady_HasNoClips_AndLowercaseStatus(ReadAlongStatus status, string wire)
         {
             var parts = new List<BookPart> { new("a", 20) };

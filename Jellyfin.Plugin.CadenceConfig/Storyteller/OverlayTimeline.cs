@@ -87,12 +87,12 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
         /// <summary>Whether the aligned audio and the Jellyfin book are the same recording.</summary>
         /// <param name="timeline">The built timeline.</param>
         /// <param name="partsTotalSeconds">The Jellyfin book's total length.</param>
-        /// <returns><see cref="ReadAlongStatus.Ready"/> or <see cref="ReadAlongStatus.Mismatch"/>.</returns>
+        /// <returns><see cref="ReadAlongStatus.Ready"/>, <see cref="ReadAlongStatus.Mismatch"/>, or <see cref="ReadAlongStatus.Empty"/> when there is no timing at all.</returns>
         public static ReadAlongStatus Check(Timeline timeline, double partsTotalSeconds)
         {
             if (timeline.Clips.Count == 0)
             {
-                return ReadAlongStatus.Mismatch;
+                return ReadAlongStatus.Empty;
             }
 
             return Math.Abs(timeline.Total - partsTotalSeconds) <= MismatchToleranceSeconds
