@@ -110,7 +110,9 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
             var link = LinkStore.Find(config, callerId);
             if (link == null)
             {
-                return new ResolvedBook(new StorytellerLink(), baseUrl, anchor, parts, null, null, ReadAlongStatus.Unlinked);
+                // Unlinked: no Storyteller token, but the caller is still a real Jellyfin user — the
+                // position endpoint reads THEIR saved position (Guid.Empty here threw a 500 live on 2026-11-22).
+                return new ResolvedBook(new StorytellerLink { JellyfinUserId = callerId }, baseUrl, anchor, parts, null, null, ReadAlongStatus.Unlinked);
             }
 
             return await ResolveLinkedAsync(link, baseUrl, anchor, parts, cancellationToken).ConfigureAwait(false);
