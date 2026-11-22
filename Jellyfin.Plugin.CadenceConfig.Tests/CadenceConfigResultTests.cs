@@ -132,5 +132,21 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
 
             result.MusicGrabberUrl.Should().BeEmpty();
         }
+
+        [Fact]
+        public void FromConfiguration_StorytellerFlag_FollowsTheUrl_AndNeverCarriesTokens()
+        {
+            CadenceConfigResult.FromConfiguration(new PluginConfiguration()).Storyteller.Should().BeFalse();
+
+            var config = new PluginConfiguration
+            {
+                StorytellerUrl = "http://192.168.7.211:8001",
+                StorytellerLinks = new[] { new Storyteller.StorytellerLink { Username = "john", Token = "secret-token" } },
+            };
+            var result = CadenceConfigResult.FromConfiguration(config);
+
+            result.Storyteller.Should().BeTrue();
+            JsonSerializer.Serialize(result).Should().NotContain("secret-token").And.NotContain("john");
+        }
     }
 }

@@ -51,6 +51,29 @@
                         <input id="SyncIntervalHours" name="SyncIntervalHours" type="number" min="1" is="emby-input" />
                         <div class="fieldDescription">How often the sync task runs. Default 12. Takes effect after the next Jellyfin restart.</div>
                     </div>
+                    <h3>Storyteller (Whispersync + read-along)</h3>
+                    <p class="fieldDescription">
+                        With a Storyteller URL set, each user connects their own Storyteller account from the
+                        Cadence client's Settings. Listening positions are pushed to Storyteller as they are
+                        saved, Storyteller reading positions are pulled back by the "Sync Storyteller positions"
+                        task, and Cadence can show the aligned text karaoke-style while a book plays. Tokens stay
+                        on this server.
+                    </p>
+                    <div class="inputContainer">
+                        <label for="StorytellerUrl">Storyteller URL:</label>
+                        <input id="StorytellerUrl" name="StorytellerUrl" type="text" is="emby-input" />
+                        <div class="fieldDescription">Storyteller base URL (e.g. http://192.168.7.211:8001). Leave blank to turn the feature off.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label for="StorytellerSyncIntervalMinutes">Position sync interval (minutes):</label>
+                        <input id="StorytellerSyncIntervalMinutes" name="StorytellerSyncIntervalMinutes" type="number" min="1" is="emby-input" />
+                        <div class="fieldDescription">How often Storyteller reading positions are pulled into Jellyfin. Default 5. Takes effect after the next Jellyfin restart.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label>Linked users:</label>
+                        <ul id="StorytellerLinks" class="fieldDescription"></ul>
+                        <div class="fieldDescription">Users who connected a Storyteller account. Removing a link signs that user out of the bridge; they can reconnect from Cadence.</div>
+                    </div>
                     <div>
                         <button is="emby-button" type="submit" class="raised button-submit block emby-button">
                             <span>Save</span>
@@ -61,7 +84,8 @@
         </div>
         <script type="text/javascript">
             var CadenceConfig = {
-                pluginUniqueId: '7d49437c-2e97-430f-b6b7-fa9d58110448'
+                pluginUniqueId: '7d49437c-2e97-430f-b6b7-fa9d58110448',
+                removedLinks: {}
             };
 
             document.querySelector('.CadenceConfigForm')
@@ -76,6 +100,11 @@
                         config.LidarrUrl = document.querySelector('#LidarrUrl').value;
                         config.LidarrApiKey = document.querySelector('#LidarrApiKey').value;
                         config.SyncIntervalHours = parseInt(document.querySelector('#SyncIntervalHours').value, 10) || 12;
+                        config.StorytellerUrl = document.querySelector('#StorytellerUrl').value;
+                        config.StorytellerSyncIntervalMinutes = parseInt(document.querySelector('#StorytellerSyncIntervalMinutes').value, 10) || 5;
+                        config.StorytellerLinks = (config.StorytellerLinks || []).filter(function (link) {
+                            return !CadenceConfig.removedLinks[link.JellyfinUserId];
+                        });
 
                         ApiClient.updatePluginConfiguration(CadenceConfig.pluginUniqueId, config).then(function (result) {
                             Dashboard.processPluginConfigurationUpdateResult(result);
@@ -95,6 +124,30 @@
                     document.querySelector('#LidarrUrl').value = config.LidarrUrl || '';
                     document.querySelector('#LidarrApiKey').value = config.LidarrApiKey || '';
                     document.querySelector('#SyncIntervalHours').value = config.SyncIntervalHours || 12;
+                    document.querySelector('#StorytellerUrl').value = config.StorytellerUrl || '';
+                    document.querySelector('#StorytellerSyncIntervalMinutes').value = config.StorytellerSyncIntervalMinutes || 5;
+                    CadenceConfig.removedLinks = {};
+                    var list = document.querySelector('#StorytellerLinks');
+                    list.innerHTML = '';
+                    (config.StorytellerLinks || []).forEach(function (link) {
+                        // Username + Jellyfin user id only — the token is never rendered.
+                        var item = document.createElement('li');
+                        item.textContent = (link.Username || '(unknown)') + ' — Jellyfin user ' + link.JellyfinUserId + ' ';
+                        var remove = document.createElement('button');
+                        remove.type = 'button';
+                        remove.setAttribute('is', 'emby-button');
+                        remove.className = 'raised emby-button';
+                        remove.textContent = 'Remove';
+                        remove.addEventListener('click', function () {
+                            CadenceConfig.removedLinks[link.JellyfinUserId] = true;
+                            item.remove();
+                        });
+                        item.appendChild(remove);
+                        list.appendChild(item);
+                    });
+                    if (!(config.StorytellerLinks || []).length) {
+                        list.textContent = 'No users linked yet.';
+                    }
 
                     Dashboard.hideLoadingMsg();
                 });

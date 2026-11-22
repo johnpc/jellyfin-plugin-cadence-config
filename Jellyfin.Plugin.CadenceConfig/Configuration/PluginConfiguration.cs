@@ -1,4 +1,5 @@
 using System;
+using Jellyfin.Plugin.CadenceConfig.Storyteller;
 using Jellyfin.Plugin.CadenceConfig.Sync;
 using MediaBrowser.Model.Plugins;
 
@@ -24,6 +25,9 @@ namespace Jellyfin.Plugin.CadenceConfig.Configuration
             MusicGrabberApiKey = string.Empty;
             SyncIntervalHours = 12;
             DeezerSubscriptions = Array.Empty<DeezerSubscription>();
+            StorytellerUrl = string.Empty;
+            StorytellerSyncIntervalMinutes = 5;
+            StorytellerLinks = Array.Empty<StorytellerLink>();
         }
 
         /// <summary>
@@ -81,5 +85,25 @@ namespace Jellyfin.Plugin.CadenceConfig.Configuration
         /// arrays cleanly (CA1819 suppressed in .editorconfig with that justification).
         /// </summary>
         public DeezerSubscription[] DeezerSubscriptions { get; set; }
+
+        /// <summary>
+        /// Gets or sets the Storyteller base URL (e.g. http://192.168.7.211:8001). When set, the plugin
+        /// bridges audiobook positions between Jellyfin and Storyteller (Whispersync-style) and serves
+        /// the Cadence client the aligned text for read-along. Empty disables the whole feature.
+        /// </summary>
+        public string StorytellerUrl { get; set; }
+
+        /// <summary>
+        /// Gets or sets how often (in minutes) the scheduled task pulls Storyteller reading positions
+        /// into Jellyfin's saved playback positions. Default 5.
+        /// </summary>
+        public int StorytellerSyncIntervalMinutes { get; set; }
+
+        /// <summary>
+        /// Gets or sets the per-user Storyteller links (Jellyfin user → Storyteller session token).
+        /// Tokens are secrets: they are used only inside the server and are never sent to a client.
+        /// An array because Jellyfin serializes plugin configuration as XML (CA1819 suppressed).
+        /// </summary>
+        public StorytellerLink[] StorytellerLinks { get; set; }
     }
 }
