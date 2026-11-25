@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text.RegularExpressions;
 
 namespace Jellyfin.Plugin.CadenceConfig.Storyteller
@@ -14,6 +15,24 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
     public static partial class BookMatcher
     {
         private static readonly string[] Noise = { "unabridged", "abridged", "a novel", "audiobook", "the audiobook" };
+
+        /// <summary>
+        /// Picks the Storyteller book for the first of several Jellyfin titles that matches (the album tag, then the
+        /// item name: tags like "01 Spin" or "Dungeon Crawler Carl, Book 2 - Carl's Doomsday Scenario" miss, the name hits).
+        /// </summary>
+        /// <param name="titles">Candidate Jellyfin titles, most specific first; null/blank entries are skipped.</param>
+        /// <param name="author">The Jellyfin author (album artist), may be null.</param>
+        /// <param name="books">The Storyteller library.</param>
+        /// <returns>The match, or null.</returns>
+        public static StorytellerBook? Match(IEnumerable<string?> titles, string? author, IEnumerable<StorytellerBook> books)
+        {
+            var library = books as IReadOnlyCollection<StorytellerBook> ?? books.ToList();
+            return titles
+                .Where(t => !string.IsNullOrWhiteSpace(t))
+                .Distinct(StringComparer.Ordinal)
+                .Select(t => Match(t, author, library))
+                .FirstOrDefault(m => m != null);
+        }
 
         /// <summary>Picks the Storyteller book for a Jellyfin title/author, or null.</summary>
         /// <param name="title">The Jellyfin book title.</param>
@@ -32,7 +51,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
             StorytellerBook? titleOnly = null;
             foreach (var book in books)
             {
-                if (!TitlesMatch(wanted, Normalize(book.Title)))
+                if (!BookTitles.Of(book).Any(t => TitlesMatch(wanted, Normalize(t))))
                 {
                     continue;
                 }
@@ -59,7 +78,8 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
                 return string.Empty;
             }
 
-            var text = Brackets().Replace(title.ToLowerInvariant(), " ");
+            // Storyteller passes epub titles through verbatim, HTML entities included ("Escape 9&#8211;5").
+            var text = Brackets().Replace(WebUtility.HtmlDecode(title).ToLowerInvariant(), " ");
             foreach (var noise in Noise)
             {
                 text = text.Replace(noise, " ", StringComparison.Ordinal);
