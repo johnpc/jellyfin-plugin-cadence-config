@@ -71,10 +71,22 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
         /// <param name="author">The Jellyfin author.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The match, or null.</returns>
-        public async Task<StorytellerBook?> MatchAsync(string baseUrl, string token, string? title, string? author, CancellationToken cancellationToken)
+        public Task<StorytellerBook?> MatchAsync(string baseUrl, string token, string? title, string? author, CancellationToken cancellationToken)
+        {
+            return MatchAsync(baseUrl, token, new[] { title }, author, cancellationToken);
+        }
+
+        /// <summary>Finds the Storyteller book for the first matching Jellyfin title (album tag, then name) + author.</summary>
+        /// <param name="baseUrl">The normalized base URL.</param>
+        /// <param name="token">The user's token.</param>
+        /// <param name="titles">Candidate Jellyfin titles, most specific first.</param>
+        /// <param name="author">The Jellyfin author.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>The match, or null.</returns>
+        public async Task<StorytellerBook?> MatchAsync(string baseUrl, string token, IReadOnlyList<string?> titles, string? author, CancellationToken cancellationToken)
         {
             var books = await BooksAsync(baseUrl, token, cancellationToken).ConfigureAwait(false);
-            var match = books == null ? null : BookMatcher.Match(title, author, books);
+            var match = books == null ? null : BookMatcher.Match(titles, author, books);
             if (match == null || !string.IsNullOrEmpty(match.AlignedAt))
             {
                 return match;
@@ -83,7 +95,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
             // The matched book is still aligning: re-read the list on the short TTL so the moment
             // Storyteller finishes, the next request sees it.
             var fresh = await BooksAsync(baseUrl, token, UnalignedTtl, cancellationToken).ConfigureAwait(false);
-            return fresh == null ? match : BookMatcher.Match(title, author, fresh) ?? match;
+            return fresh == null ? match : BookMatcher.Match(titles, author, fresh) ?? match;
         }
 
         /// <summary>Drops the cached list for a token (after a link is replaced).</summary>

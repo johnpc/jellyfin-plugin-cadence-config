@@ -19,6 +19,10 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
         [JsonPropertyName("authors")]
         public IReadOnlyList<StorytellerCreator> Authors { get; set; } = Array.Empty<StorytellerCreator>();
 
+        /// <summary>Gets or sets the audiobook side (its folder carries the audiobook's own title), may be null.</summary>
+        [JsonPropertyName("audiobook")]
+        public StorytellerAudiobook? Audiobook { get; set; }
+
         /// <summary>Gets or sets when alignment finished (null while queued/aligning).</summary>
         [JsonPropertyName("alignedAt")]
         public string? AlignedAt { get; set; }

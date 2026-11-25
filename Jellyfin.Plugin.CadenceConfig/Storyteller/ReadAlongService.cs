@@ -139,9 +139,11 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
         [ExcludeFromCodeCoverage]
         public async Task<ResolvedBook> ResolveLinkedAsync(StorytellerLink link, string baseUrl, PartInfo anchor, IReadOnlyList<BookPart> parts, CancellationToken cancellationToken)
         {
-            var title = string.IsNullOrWhiteSpace(anchor.Album) ? anchor.Name : anchor.Album;
+            // Album tag first (the book-level title), then the item name: some rips tag the album "01 Spin" or
+            // "Dungeon Crawler Carl, Book 2 - Carl's Doomsday Scenario" while the name is the plain title.
+            var titles = new[] { anchor.Album, anchor.Name };
             var author = _jellyfin.AuthorOf(anchor.ItemId);
-            var book = await _catalog.MatchAsync(baseUrl, link.Token, title, author, cancellationToken).ConfigureAwait(false);
+            var book = await _catalog.MatchAsync(baseUrl, link.Token, titles, author, cancellationToken).ConfigureAwait(false);
             Timeline? timeline = null;
             if (book != null && !string.IsNullOrEmpty(book.AlignedAt))
             {

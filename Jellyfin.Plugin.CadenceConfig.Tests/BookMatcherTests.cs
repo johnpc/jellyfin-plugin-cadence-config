@@ -18,6 +18,49 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
             return new StorytellerBook { Uuid = uuid, Title = title, Authors = creators };
         }
 
+        private static StorytellerBook InFolder(string uuid, string title, string folder, params string[] authors)
+        {
+            var book = Book(uuid, title, authors);
+            book.Audiobook = new StorytellerAudiobook { Filepath = "/library/" + folder };
+            return book;
+        }
+
+        private static readonly List<StorytellerBook> Live = new()
+        {
+            // Real Storyteller records from 2026-11-25 that the title-only matcher could not reach.
+            InFolder("phm", "A Novel", "Andy Weir - Project Hail Mary", "Andy Weir"),
+            InFolder("exh", "Stories", "Ted Chiang - Exhalation Stories", "Ted Chiang"),
+            InFolder("br", "Do Androids Dream of Electric Sheep?", "Philip K. Dick - Blade Runner", "Philip K. Dick"),
+            InFolder("4hw", "The 4-Hour Workweek: Escape 9&#8211;5, Live Anywhere, and Join the New Rich - Expanded and Updated", "Timothy Ferriss - The 4-Hour Workweek", "Timothy Ferriss"),
+            InFolder("spin", "Spin", "Robert Charles Wilson - Spin - Book 1", "Robert Charles Wilson"),
+            InFolder("carl", "Carl's Doomsday Scenario", "Matt Dinniman - Carl's Doomsday Scenario", "Matt Dinniman"),
+        };
+
+        [Theory]
+        [InlineData("Project Hail Mary", "Andy Weir", "phm")]
+        [InlineData("Exhalation: Stories", "Ted Chiang", "exh")]
+        [InlineData("Blade Runner", "Philip K. Dick (Blade Runner)", "br")]
+        [InlineData("The 4-Hour Workweek: Escape 9-5, Live Anywhere, and Join the New Rich", "Timothy Ferriss", "4hw")]
+        public void Match_UsesTheAudiobookFolderAndDecodesEntities(string title, string author, string expected)
+        {
+            BookMatcher.Match(title, author, Live)!.Uuid.Should().Be(expected);
+        }
+
+        [Fact]
+        public void Match_TriesEachJellyfinTitle_AlbumThenName()
+        {
+            BookMatcher.Match(new[] { "01 Spin", "Spin" }, "Robert Charles Wilson (Spin)", Live)!.Uuid.Should().Be("spin");
+            BookMatcher.Match(new[] { "Dungeon Crawler Carl, Book 2 - Carl's Doomsday Scenario", "Carl's Doomsday Scenario" }, "Matt Dinniman", Live)!.Uuid.Should().Be("carl");
+            BookMatcher.Match(new string?[] { null, " ", "Spin" }, "Robert Charles Wilson", Live)!.Uuid.Should().Be("spin");
+            BookMatcher.Match(new[] { "Nothing", "Still Nothing" }, "Andy Weir", Live).Should().BeNull();
+        }
+
+        [Fact]
+        public void Match_FolderTitleStillRequiresTheAuthor()
+        {
+            BookMatcher.Match("Project Hail Mary", "Someone Else", Live).Should().BeNull();
+        }
+
         private static readonly List<StorytellerBook> Library = new()
         {
             Book("1", "A Gentleman in Moscow", "Amor Towles"),
@@ -59,6 +102,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
         [InlineData("The Institute [Audiobook] (Unabridged)", "the institute")]
         [InlineData("Graveyard Shift: A Novel", "graveyard shift")]
         [InlineData("  Multiple   Spaces -- here! ", "multiple spaces here")]
+        [InlineData("Escape 9&#8211;5 &amp; More", "escape 9 5 more")]
         [InlineData(null, "")]
         public void Normalize_StripsNoise(string? input, string expected)
         {
