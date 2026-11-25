@@ -27,11 +27,12 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
         public static StorytellerBook? Match(IEnumerable<string?> titles, string? author, IEnumerable<StorytellerBook> books)
         {
             var library = books as IReadOnlyCollection<StorytellerBook> ?? books.ToList();
-            return titles
-                .Where(t => !string.IsNullOrWhiteSpace(t))
-                .Distinct(StringComparer.Ordinal)
-                .Select(t => Match(t, author, library))
-                .FirstOrDefault(m => m != null);
+            var wanted = titles.Where(t => !string.IsNullOrWhiteSpace(t)).Distinct(StringComparer.Ordinal).ToList();
+
+            // Exact titles across EVERY candidate before any subtitle-tolerant match: the album tag
+            // "Dungeon Crawler Carl, Book 2 - Carl's Doomsday Scenario" starts with book 1's title, so a
+            // tolerant first pass would hand book 2's listener book 1's alignment.
+            return First(wanted, author, library, exact: true) ?? First(wanted, author, library, exact: false);
         }
 
         /// <summary>Picks the Storyteller book for a Jellyfin title/author, or null.</summary>
@@ -41,31 +42,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
         /// <returns>The match, or null.</returns>
         public static StorytellerBook? Match(string? title, string? author, IEnumerable<StorytellerBook> books)
         {
-            var wanted = Normalize(title);
-            if (wanted.Length == 0)
-            {
-                return null;
-            }
-
-            var authorTokens = AuthorTokens(author);
-            StorytellerBook? titleOnly = null;
-            foreach (var book in books)
-            {
-                if (!BookTitles.Of(book).Any(t => TitlesMatch(wanted, Normalize(t))))
-                {
-                    continue;
-                }
-
-                var theirs = book.Authors.SelectMany(a => AuthorTokens(a.Name)).ToHashSet();
-                if (authorTokens.Count == 0 || theirs.Count == 0 || authorTokens.Overlaps(theirs))
-                {
-                    return book;
-                }
-
-                titleOnly ??= book;
-            }
-
-            return authorTokens.Count == 0 ? titleOnly : null;
+            return Match(new[] { title }, author, books);
         }
 
         /// <summary>Lowercase, bracketed/noise suffixes removed, punctuation → space, spaces collapsed.</summary>
@@ -100,11 +77,50 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
                 .ToHashSet();
         }
 
-        private static bool TitlesMatch(string a, string b)
+        private static StorytellerBook? First(IReadOnlyList<string?> titles, string? author, IReadOnlyCollection<StorytellerBook> books, bool exact)
+        {
+            return titles.Select(t => MatchOne(t, author, books, exact)).FirstOrDefault(m => m != null);
+        }
+
+        private static StorytellerBook? MatchOne(string? title, string? author, IEnumerable<StorytellerBook> books, bool exact)
+        {
+            var wanted = Normalize(title);
+            if (wanted.Length == 0)
+            {
+                return null;
+            }
+
+            var authorTokens = AuthorTokens(author);
+            StorytellerBook? titleOnly = null;
+            foreach (var book in books)
+            {
+                if (!BookTitles.Of(book).Any(t => TitlesMatch(wanted, Normalize(t), exact)))
+                {
+                    continue;
+                }
+
+                var theirs = book.Authors.SelectMany(a => AuthorTokens(a.Name)).ToHashSet();
+                if (authorTokens.Count == 0 || theirs.Count == 0 || authorTokens.Overlaps(theirs))
+                {
+                    return book;
+                }
+
+                titleOnly ??= book;
+            }
+
+            return authorTokens.Count == 0 ? titleOnly : null;
+        }
+
+        private static bool TitlesMatch(string a, string b, bool exact)
         {
             if (a == b)
             {
                 return true;
+            }
+
+            if (exact)
+            {
+                return false;
             }
 
             // Subtitle tolerance: "the fourth turning an american prophecy" vs "the fourth turning".

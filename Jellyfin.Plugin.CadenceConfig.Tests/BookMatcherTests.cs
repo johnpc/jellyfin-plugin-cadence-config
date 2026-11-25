@@ -33,6 +33,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
             InFolder("br", "Do Androids Dream of Electric Sheep?", "Philip K. Dick - Blade Runner", "Philip K. Dick"),
             InFolder("4hw", "The 4-Hour Workweek: Escape 9&#8211;5, Live Anywhere, and Join the New Rich - Expanded and Updated", "Timothy Ferriss - The 4-Hour Workweek", "Timothy Ferriss"),
             InFolder("spin", "Spin", "Robert Charles Wilson - Spin - Book 1", "Robert Charles Wilson"),
+            InFolder("dcc1", "Dungeon Crawler Carl: A LitRPG/Gamelit Adventure", "Matt Dinniman - Dungeon Crawler Carl", "Matt Dinniman"),
             InFolder("carl", "Carl's Doomsday Scenario", "Matt Dinniman - Carl's Doomsday Scenario", "Matt Dinniman"),
         };
 
@@ -53,6 +54,21 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
             BookMatcher.Match(new[] { "Dungeon Crawler Carl, Book 2 - Carl's Doomsday Scenario", "Carl's Doomsday Scenario" }, "Matt Dinniman", Live)!.Uuid.Should().Be("carl");
             BookMatcher.Match(new string?[] { null, " ", "Spin" }, "Robert Charles Wilson", Live)!.Uuid.Should().Be("spin");
             BookMatcher.Match(new[] { "Nothing", "Still Nothing" }, "Andy Weir", Live).Should().BeNull();
+        }
+
+        [Fact]
+        public void Match_PrefersAnExactTitleOverASeriesPrefix()
+        {
+            // 0.0.0.29 regression found live: the album tag starts with book 1's folder title.
+            var titles = new[] { "Dungeon Crawler Carl, Book 2 - Carl's Doomsday Scenario", "Carl's Doomsday Scenario" };
+            BookMatcher.Match(titles, "Matt Dinniman", Live)!.Uuid.Should().Be("carl");
+            BookMatcher.Match("Dungeon Crawler Carl", "Matt Dinniman", Live)!.Uuid.Should().Be("dcc1");
+        }
+
+        [Fact]
+        public void Match_FallsBackToSubtitleToleranceWhenNothingIsExact()
+        {
+            BookMatcher.Match(new[] { "Dungeon Crawler Carl, Book 9", "Nope" }, "Matt Dinniman", Live)!.Uuid.Should().Be("dcc1");
         }
 
         [Fact]
