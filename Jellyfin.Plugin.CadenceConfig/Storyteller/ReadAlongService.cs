@@ -75,6 +75,19 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
             return OverlayTimeline.Check(timeline, partsTotal);
         }
 
+        /// <summary>
+        /// Lays a cached Storyteller timeline onto the Jellyfin audiobook: exact chapter anchoring when the
+        /// chunks are the m4b's chapters, else the leftover split over missing chunks.
+        /// </summary>
+        /// <param name="raw">The timeline as Storyteller published it.</param>
+        /// <param name="partsTotal">The audiobook's total length in seconds.</param>
+        /// <param name="chapterStarts">The audiobook's chapter markers in global seconds.</param>
+        /// <returns>The reconciled timeline.</returns>
+        public static Timeline Reconcile(Timeline raw, double partsTotal, IReadOnlyList<double> chapterStarts)
+        {
+            return ChapterAnchors.Reconcile(raw, partsTotal, chapterStarts) ?? ChunkGaps.Reconcile(raw, partsTotal);
+        }
+
         /// <summary>Shapes a resolution into the wire response.</summary>
         /// <param name="resolved">The resolution.</param>
         /// <returns>The response.</returns>
@@ -152,10 +165,7 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
                 // The cached timeline is pure Storyteller; the audiobook's length and chapter markers are
                 // Jellyfin's, so the reconciliation (chunks Storyteller never embedded) happens here, per
                 // resolve: exact chapter anchoring when the chunks are the m4b's chapters, else the leftover split.
-                var total = PartsTimeline.Total(parts);
-                timeline = raw == null
-                    ? null
-                    : ChapterAnchors.Reconcile(raw, total, _jellyfin.ChapterStarts(parts)) ?? ChunkGaps.Reconcile(raw, total);
+                timeline = raw == null ? null : Reconcile(raw, PartsTimeline.Total(parts), _jellyfin.ChapterStarts(parts));
             }
 
             var status = StatusFor(true, book, timeline, PartsTimeline.Total(parts));

@@ -106,7 +106,13 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
             _failedAt.TryRemove(token, out _);
         }
 
-        private async Task<IReadOnlyList<StorytellerBook>?> BooksAsync(string baseUrl, string token, TimeSpan maxAge, CancellationToken cancellationToken)
+        /// <summary>The user's Storyteller books, reusing a cached list no older than <paramref name="maxAge"/>.</summary>
+        /// <param name="baseUrl">The normalized base URL.</param>
+        /// <param name="token">The user's token.</param>
+        /// <param name="maxAge">How old a cached list may be (<see cref="Ttl"/> or <see cref="UnalignedTtl"/>).</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>The books, or null.</returns>
+        public async Task<IReadOnlyList<StorytellerBook>?> BooksAsync(string baseUrl, string token, TimeSpan maxAge, CancellationToken cancellationToken)
         {
             var now = _now();
             if (_byToken.TryGetValue(token, out var cached) && now - cached.At < maxAge)
