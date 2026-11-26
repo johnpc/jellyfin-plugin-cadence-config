@@ -56,6 +56,8 @@ namespace Jellyfin.Plugin.CadenceConfig.Registration
             serviceCollection.AddSingleton<TimelineBuilder>();
             serviceCollection.AddSingleton<JellyfinBooks>();
             serviceCollection.AddSingleton<ReadAlongService>();
+            serviceCollection.AddSingleton<LibraryResponseCache>();
+            serviceCollection.AddSingleton<ReadAlongLibraryService>();
             serviceCollection.AddSingleton<PositionService>();
             serviceCollection.AddSingleton<IHostedService, PositionBridge>();
         }
