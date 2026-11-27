@@ -33,6 +33,8 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
             InFolder("br", "Do Androids Dream of Electric Sheep?", "Philip K. Dick - Blade Runner", "Philip K. Dick"),
             InFolder("4hw", "The 4-Hour Workweek: Escape 9&#8211;5, Live Anywhere, and Join the New Rich - Expanded and Updated", "Timothy Ferriss - The 4-Hour Workweek", "Timothy Ferriss"),
             InFolder("spin", "Spin", "Robert Charles Wilson - Spin - Book 1", "Robert Charles Wilson"),
+            InFolder("ft1", "The Fourth Turning: An American Prophecy", "William Strauss - The Fourth Turning", "William Strauss", "Neil Howe"),
+            InFolder("ft2", "The Fourth Turning Is Here", "Neil Howe - The Fourth Turning Is Here What the Seasons of History Tell Us About How and When This Crisis Will", "Neil Howe"),
             InFolder("dcc1", "Dungeon Crawler Carl: A LitRPG/Gamelit Adventure", "Matt Dinniman - Dungeon Crawler Carl", "Matt Dinniman"),
             InFolder("carl", "Carl's Doomsday Scenario", "Matt Dinniman - Carl's Doomsday Scenario", "Matt Dinniman"),
         };
@@ -63,6 +65,15 @@ namespace Jellyfin.Plugin.CadenceConfig.Tests
             var titles = new[] { "Dungeon Crawler Carl, Book 2 - Carl's Doomsday Scenario", "Carl's Doomsday Scenario" };
             BookMatcher.Match(titles, "Matt Dinniman", Live)!.Uuid.Should().Be("carl");
             BookMatcher.Match("Dungeon Crawler Carl", "Matt Dinniman", Live)!.Uuid.Should().Be("dcc1");
+        }
+
+        [Fact]
+        public void Match_ToleranceKeepsTheMostSpecificTitle()
+        {
+            // 0.0.0.30 live: the sequel matched the original because "the fourth turning" also prefixes it.
+            var sequel = new[] { "The Fourth Turning Is Here: What the Seasons of History Tell Us About How and When This Crisis Will End" };
+            BookMatcher.Match(sequel, "Neil Howe", Live)!.Uuid.Should().Be("ft2");
+            BookMatcher.Match(new[] { "The Fourth Turning: An American Prophecy", "The Fourth Turning" }, "William Strauss, Neil Howe", Live)!.Uuid.Should().Be("ft1");
         }
 
         [Fact]
