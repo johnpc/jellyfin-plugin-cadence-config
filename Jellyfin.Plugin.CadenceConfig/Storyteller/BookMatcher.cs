@@ -90,25 +90,38 @@ namespace Jellyfin.Plugin.CadenceConfig.Storyteller
                 return null;
             }
 
+            // Most specific wins: "The Fourth Turning Is Here: What the Seasons..." tolerates both "The Fourth Turning"
+            // (an older book) and "The Fourth Turning Is Here"; the longer shared title is the right one.
             var authorTokens = AuthorTokens(author);
-            StorytellerBook? titleOnly = null;
+            StorytellerBook? best = null;
+            var bestScore = -1;
             foreach (var book in books)
             {
-                if (!BookTitles.Of(book).Any(t => TitlesMatch(wanted, Normalize(t), exact)))
+                var score = Score(wanted, book, exact);
+                if (score > bestScore && AuthorsAgree(authorTokens, book))
                 {
-                    continue;
+                    best = book;
+                    bestScore = score;
                 }
-
-                var theirs = book.Authors.SelectMany(a => AuthorTokens(a.Name)).ToHashSet();
-                if (authorTokens.Count == 0 || theirs.Count == 0 || authorTokens.Overlaps(theirs))
-                {
-                    return book;
-                }
-
-                titleOnly ??= book;
             }
 
-            return authorTokens.Count == 0 ? titleOnly : null;
+            return best;
+        }
+
+        private static int Score(string wanted, StorytellerBook book, bool exact)
+        {
+            return BookTitles.Of(book)
+                .Select(Normalize)
+                .Where(t => TitlesMatch(wanted, t, exact))
+                .Select(t => Math.Min(t.Length, wanted.Length))
+                .DefaultIfEmpty(-1)
+                .Max();
+        }
+
+        private static bool AuthorsAgree(HashSet<string> authorTokens, StorytellerBook book)
+        {
+            var theirs = book.Authors.SelectMany(a => AuthorTokens(a.Name)).ToHashSet();
+            return authorTokens.Count == 0 || theirs.Count == 0 || authorTokens.Overlaps(theirs);
         }
 
         private static bool TitlesMatch(string a, string b, bool exact)
